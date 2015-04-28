@@ -19,62 +19,10 @@
 
 package com.romraider.ramtune.test;
 
-import static com.romraider.util.HexUtil.asBytes;
-import static com.romraider.util.HexUtil.asHex;
-import static com.romraider.util.ThreadUtil.runAsDaemon;
-import static com.romraider.util.ThreadUtil.sleep;
-import static com.romraider.util.ParamChecker.isNullOrEmpty;
-import static java.awt.FlowLayout.LEFT;
-import static java.awt.Font.PLAIN;
-import static java.awt.GridBagConstraints.BOTH;
-import static javax.swing.JOptionPane.ERROR_MESSAGE;
-import static javax.swing.JOptionPane.WARNING_MESSAGE;
-import static javax.swing.JOptionPane.YES_NO_OPTION;
-import static javax.swing.JOptionPane.YES_OPTION;
-import static javax.swing.JOptionPane.showConfirmDialog;
-import static javax.swing.JOptionPane.showMessageDialog;
-import static javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER;
-import static javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED;
-import static javax.swing.border.BevelBorder.LOWERED;
-
-import java.awt.BorderLayout;
-import java.awt.Component;
-import java.awt.FlowLayout;
-import java.awt.Font;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.WindowEvent;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.io.Writer;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import javax.swing.ButtonGroup;
-import javax.swing.ImageIcon;
-import javax.swing.JButton;
-import javax.swing.JCheckBox;
-import javax.swing.JComboBox;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
-import javax.swing.JTextField;
-import javax.swing.SwingUtilities;
-import javax.swing.border.BevelBorder;
-import javax.swing.border.EtchedBorder;
-import javax.swing.border.TitledBorder;
-
 import com.romraider.Settings;
 import com.romraider.io.connection.ConnectionProperties;
 import com.romraider.io.protocol.Protocol;
 import com.romraider.io.protocol.ProtocolFactory;
-import com.romraider.io.serial.port.SerialPortRefresher;
 import com.romraider.logger.ecu.comms.io.protocol.LoggerProtocol;
 import com.romraider.logger.ecu.comms.manager.PollingState;
 import com.romraider.logger.ecu.comms.manager.PollingStateImpl;
@@ -82,7 +30,6 @@ import com.romraider.logger.ecu.definition.EcuDataLoader;
 import com.romraider.logger.ecu.definition.EcuDataLoaderImpl;
 import com.romraider.logger.ecu.definition.Module;
 import com.romraider.logger.ecu.definition.Transport;
-import com.romraider.logger.ecu.ui.SerialPortComboBox;
 import com.romraider.ramtune.test.command.executor.CommandExecutor;
 import com.romraider.ramtune.test.command.executor.CommandExecutorImpl;
 import com.romraider.ramtune.test.command.generator.CommandGenerator;
@@ -95,6 +42,34 @@ import com.romraider.swing.LookAndFeelManager;
 import com.romraider.util.LogManager;
 import com.romraider.util.SettingsManager;
 
+import javax.swing.*;
+import javax.swing.border.BevelBorder;
+import javax.swing.border.EtchedBorder;
+import javax.swing.border.TitledBorder;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.WindowEvent;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.io.Writer;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static com.romraider.util.HexUtil.asBytes;
+import static com.romraider.util.HexUtil.asHex;
+import static com.romraider.util.ParamChecker.isNullOrEmpty;
+import static com.romraider.util.ThreadUtil.runAsDaemon;
+import static java.awt.FlowLayout.LEFT;
+import static java.awt.Font.PLAIN;
+import static java.awt.GridBagConstraints.BOTH;
+import static javax.swing.JOptionPane.*;
+import static javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER;
+import static javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED;
+import static javax.swing.border.BevelBorder.LOWERED;
+
 /*
  * This is a test app! Use at your own risk!!
  * It borrows some functionality from the logger which should be rewritten/removed before being released!!
@@ -106,16 +81,14 @@ public final class RamTuneTestApp extends AbstractFrame {
     private static final String REGEX_VALID_ADDRESS_BYTES = "[0-9a-fA-F]{6}";
     private static final String REGEX_VALID_DATA_BYTES = "[0-9a-fA-F]{2,}";
     private static final PollingState pollMode = new PollingStateImpl();
-    private static final String ISO9141 = "ISO9141";
+    //private static final String ISO9141 = "ISO9141";
+    private static final String ISO15765 = "ISO15765";
     private static Protocol protocol;
     private final JTextField addressField = new JTextField(6);
     private final JTextField lengthField = new JTextField(4);
     private final JTextField sendTimeoutField = new JTextField(4);
-    private final JTextField blocksize = new JTextField(3);
     private final JTextArea dataField = new JTextArea(5, 80);
     private final JTextArea responseField = new JTextArea(10, 80);
-    private final JCheckBox blockRead = new JCheckBox("Block Read");
-    private final SerialPortComboBox portsComboBox;
     private final JComboBox commandComboBox;
     private static Module module;
     private static String userTp;
@@ -123,7 +96,7 @@ public final class RamTuneTestApp extends AbstractFrame {
     private static String target;
     private static Settings settings = SettingsManager.getSettings();
     private Map<String, Map<Transport, Collection<Module>>> protocolList =
-            new HashMap<String, Map<Transport, Collection<Module>>>();
+            new HashMap<>();
 
     public RamTuneTestApp(String title) {
         super(title);
@@ -138,32 +111,21 @@ public final class RamTuneTestApp extends AbstractFrame {
                 settings.getFileLoggingControllerSwitchId(), null);
         protocolList = dataLoader.getProtocols();
         target = settings.getTargetModule();
-        portsComboBox = new SerialPortComboBox();
         userTp = settings.getTransportProtocol();
         userLibrary = settings.getJ2534Device();
-        settings.setTransportProtocol(ISO9141);
+        settings.setTransportProtocol(ISO15765);
         // Read Address blocks only seems to work with ISO9141, it
         // may not be implemented in the ECU for ISO15765
         final LoggerProtocol lp = ProtocolFactory.getProtocol(
                 settings.getLoggerProtocol(),
-                ISO9141
-                );
+                ISO15765
+        );
         protocol = lp.getProtocol();
-        commandComboBox = new JComboBox(new CommandGenerator[]{
+        commandComboBox = new JComboBox<>(new CommandGenerator[]{
                 new EcuInitCommandGenerator(protocol),
                 new ReadCommandGenerator(protocol),
                 new WriteCommandGenerator(protocol)});
         initUserInterface();
-        startPortRefresherThread();
-    }
-
-    private void startPortRefresherThread() {
-        SerialPortRefresher serialPortRefresher = new SerialPortRefresher(portsComboBox, SettingsManager.getSettings().getLoggerPort());
-        runAsDaemon(serialPortRefresher);
-        // wait until port refresher fully started before continuing
-        while (!serialPortRefresher.isStarted()) {
-            sleep(100);
-        }
     }
 
     private void initUserInterface() {
@@ -234,19 +196,10 @@ public final class RamTuneTestApp extends AbstractFrame {
         lengthField.setText("1");
         lengthPanel.add(lengthField);
         lengthPanel.add(new JLabel("byte(s)"));
-        JPanel blockReadPanel = new JPanel(new FlowLayout());
-        blockRead.setSelected(true);
-        blockRead.setToolTipText("uncheck to read range byte at a time");
-        blockReadPanel.add(blockRead);
-        blockReadPanel.add(new JLabel("Block Size:"));
-        blocksize.setText("128");
-        blocksize.setToolTipText("Set to value allowed by the ECU");
-        blockReadPanel.add(blocksize);
 
         JPanel addressPanel = new JPanel(new FlowLayout(LEFT));
         addressPanel.add(addressFieldPanel);
         addressPanel.add(lengthPanel);
-        addressPanel.add(blockReadPanel);
         constraints.gridx = 1;
         constraints.gridy = 0;
         constraints.gridwidth = 4;
@@ -298,12 +251,13 @@ public final class RamTuneTestApp extends AbstractFrame {
                         button.setEnabled(false);
                         CommandExecutor commandExecutor = null;
                         try {
+                            settings.setDestinationTarget(module);
                             ConnectionProperties connectionProperties = new RamTuneTestAppConnectionProperties(protocol.getDefaultConnectionProperties(), getSendTimeout());
-                            commandExecutor = new CommandExecutorImpl(connectionProperties, (String) portsComboBox.getSelectedItem());
+                            commandExecutor = new CommandExecutorImpl(connectionProperties, null);
                             final CommandGenerator commandGenerator = (CommandGenerator) commandComboBox.getSelectedItem();
                             if (validateInput(commandGenerator) && confirmCommandExecution(commandGenerator)) {
                                 StringBuilder builder = new StringBuilder();
-                                List<byte[]> commands = commandGenerator.createCommands(module, getData(), getAddress(), getLength(), getBlockRead(), getBlockSize());
+                                List<byte[]> commands = commandGenerator.createCommands(module, getData(), getAddress(), getLength(), false, 1);
                                 for (byte[] command : commands) {
                                     appendResponseLater("SND [" + commandGenerator + "]:\t" + asHex(command) + "\n");
                                     byte[] response = protocol.preprocessResponse(command, commandExecutor.executeCommand(command), pollMode);
@@ -315,7 +269,9 @@ public final class RamTuneTestApp extends AbstractFrame {
                         } catch (Exception ex) {
                             reportError(ex);
                         } finally {
-                            commandExecutor.close();
+                            if (commandExecutor != null) {
+                                commandExecutor.close();
+                            }
                             button.setEnabled(true);
                         }
                     }
@@ -352,14 +308,6 @@ public final class RamTuneTestApp extends AbstractFrame {
 
     private int getLength() {
         return getIntFromField(lengthField);
-    }
-
-    private boolean getBlockRead() {
-        return blockRead.isSelected();
-    }
-
-    private int getBlockSize() {
-        return getIntFromField(blocksize);
     }
 
     private int getSendTimeout() {
@@ -424,7 +372,6 @@ public final class RamTuneTestApp extends AbstractFrame {
 
     private JPanel buildComPortPanel() {
         JPanel panel = new JPanel(new FlowLayout(LEFT));
-        panel.add(buildComPorts());
         panel.add(buildSendTimeout());
 
         final ButtonGroup moduleGroup = new ButtonGroup();
@@ -484,13 +431,6 @@ public final class RamTuneTestApp extends AbstractFrame {
         panel.add(new JLabel("Send Timeout:"));
         panel.add(sendTimeoutField);
         panel.add(new JLabel("ms"));
-        return panel;
-    }
-
-    private JPanel buildComPorts() {
-        JPanel panel = new JPanel(new FlowLayout());
-        panel.add(new JLabel("COM Port:"));
-        panel.add(portsComboBox);
         return panel;
     }
 

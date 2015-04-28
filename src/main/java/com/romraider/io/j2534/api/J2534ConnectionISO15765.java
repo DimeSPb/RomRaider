@@ -112,6 +112,7 @@ public final class J2534ConnectionISO15765 implements ConnectionManager {
                     "J2534/ISO15765 exception: deviceId:%d, channelId:%d, msgId:%d",
                     deviceId, channelId, msgId));
             close();
+            e.printStackTrace();
             throw new J2534Exception("J2534/ISO15765 Error opening device: " +
                     e.getMessage(), e);
         }

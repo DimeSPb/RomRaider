@@ -19,9 +19,12 @@
 
 package com.romraider.ramtune.test.command.executor;
 
+import com.romraider.Settings;
 import com.romraider.io.connection.ConnectionManager;
 import static com.romraider.io.connection.ConnectionManagerFactory.getManager;
 import com.romraider.io.connection.ConnectionProperties;
+import com.romraider.util.SettingsManager;
+
 import static com.romraider.util.ParamChecker.checkNotNull;
 import static com.romraider.util.ParamChecker.checkNotNullOrEmpty;
 
@@ -30,7 +33,10 @@ public final class CommandExecutorImpl implements CommandExecutor {
 
     public CommandExecutorImpl(ConnectionProperties connectionProperties, String port) {
         checkNotNull(connectionProperties);
-        checkNotNullOrEmpty(port, "port");
+        Settings settings = SettingsManager.getSettings();
+        if (!settings.isCanBus()) {
+            checkNotNullOrEmpty(port, "port");
+        }
         this.connectionManager = getManager(port, connectionProperties);
     }
 
