@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2012 RomRaider.com
+ * Copyright (C) 2006-2020 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,12 +21,16 @@ package com.romraider.swing;
 
 import static com.romraider.Version.PRODUCT_NAME;
 import static java.io.File.separator;
+import static javax.swing.JOptionPane.INFORMATION_MESSAGE;
+import static javax.swing.JOptionPane.showMessageDialog;
 
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.io.File;
+import java.text.MessageFormat;
+import java.util.ResourceBundle;
 import java.util.StringTokenizer;
 
 import javax.swing.*;
@@ -40,11 +44,14 @@ import com.romraider.Settings;
 import com.romraider.editor.ecu.ECUEditor;
 import com.romraider.editor.ecu.ECUEditorManager;
 import com.romraider.util.FileAssociator;
+import com.romraider.util.ResourceUtil;
 import com.romraider.util.SettingsManager;
 
 public class SettingsForm extends JFrame implements MouseListener {
 
     private static final long serialVersionUID = 3910602424260147767L;
+    private static final ResourceBundle rb = new ResourceUtil().getBundle(
+            SettingsForm.class.getName());
 
     public SettingsForm() {
         this.setIconImage(getEditor().getIconImage());
@@ -59,6 +66,8 @@ public class SettingsForm extends JFrame implements MouseListener {
         increaseColor.addMouseListener(this);
         decreaseColor.addMouseListener(this);
         warningColor.addMouseListener(this);
+        liveValueColor.addMouseListener(this);
+        curLiveValueColor.addMouseListener(this);
 
         btnOk.addMouseListener(this);
         btnApply.addMouseListener(this);
@@ -85,6 +94,8 @@ public class SettingsForm extends JFrame implements MouseListener {
     private void initSettings() {
         Settings settings = getSettings();
         obsoleteWarning.setSelected(settings.isObsoleteWarning());
+        oldLocale = settings.getLocale();
+        localeFormatCheckBox.setSelected(oldLocale.equals("en_US"));
         calcConflictWarning.setSelected(settings.isCalcConflictWarning());
         displayHighTables.setSelected(settings.isDisplayHighTables());
         saveDebugTables.setSelected(settings.isSaveDebugTables());
@@ -97,6 +108,10 @@ public class SettingsForm extends JFrame implements MouseListener {
         axisColor.setBackground(settings.getAxisColor());
         increaseColor.setBackground(settings.getIncreaseBorder());
         decreaseColor.setBackground(settings.getDecreaseBorder());
+        liveValueColor.setBackground(settings.getliveValueColor());
+        liveValueColor.setToolTipText(rb.getString("CLROVERLAYV"));
+        curLiveValueColor.setBackground(settings.getCurLiveValueColor());
+        curLiveValueColor.setToolTipText(rb.getString("CLROVERLAYLIVE"));
 
         cellWidth.setText(((int) settings.getCellSize().getWidth()) + "");
         cellHeight.setText(((int) settings.getCellSize().getHeight()) + "");
@@ -154,6 +169,7 @@ public class SettingsForm extends JFrame implements MouseListener {
     private void initComponents() {
         obsoleteWarning = new javax.swing.JCheckBox();
         calcConflictWarning = new javax.swing.JCheckBox();
+        localeFormatCheckBox = new javax.swing.JCheckBox();
         debug = new javax.swing.JCheckBox();
         btnCancel = new javax.swing.JButton();
         btnOk = new javax.swing.JButton();
@@ -183,6 +199,10 @@ public class SettingsForm extends JFrame implements MouseListener {
         increaseColor = new javax.swing.JLabel();
         decreaseColor = new javax.swing.JLabel();
         lblDecrease = new javax.swing.JLabel();
+        liveValueColor = new javax.swing.JLabel();
+        lblLiveValue = new javax.swing.JLabel();
+        curLiveValueColor = new javax.swing.JLabel();
+        lblCurLiveValue = new javax.swing.JLabel();
         lblCellHeight = new javax.swing.JLabel();
         cellHeight = new javax.swing.JTextField();
         cellWidth = new javax.swing.JTextField();
@@ -208,50 +228,57 @@ public class SettingsForm extends JFrame implements MouseListener {
         cbScaleHeaderAndData = new javax.swing.JCheckBox();
 
         clipboardButtonGroup = new ButtonGroup();
-        rdbtnDefault = new JRadioButton("RomRaider Default");
-        rdbtnAirboys = new JRadioButton("Airboys Spreadsheet");
-        rdbtnCustom = new JRadioButton("Custom (manually specify formats in settings.xml)");
+        rdbtnDefault = new JRadioButton(rb.getString("RRDEFAULT"));
+        rdbtnAirboys = new JRadioButton(rb.getString("ABSS"));
+        rdbtnCustom = new JRadioButton(rb.getString("CUSTOM"));
         clipboardButtonGroup.add(this.rdbtnDefault);
         clipboardButtonGroup.add(this.rdbtnAirboys);
         clipboardButtonGroup.add(this.rdbtnCustom);
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
-        setTitle(PRODUCT_NAME + " Settings");
+        setTitle(MessageFormat.format(
+                rb.getString("RRSETTINGS"), PRODUCT_NAME));
         setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
         setFont(new java.awt.Font("Tahoma", 0, 12));
-        obsoleteWarning.setText("Warn me when opening out of date ECU image revision");
+        
+        obsoleteWarning.setText(rb.getString("WARNOOD"));
         obsoleteWarning.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
         obsoleteWarning.setMargin(new java.awt.Insets(0, 0, 0, 0));
 
-        calcConflictWarning.setText("Warn me when real and byte value calculations conflict");
+        localeFormatCheckBox.setText(rb.getString("USNUMBER"));
+        localeFormatCheckBox.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
+        localeFormatCheckBox.setMargin(new java.awt.Insets(0, 0, 0, 0));
+        
+        calcConflictWarning.setText(rb.getString("WARNREAL"));
         calcConflictWarning.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
         calcConflictWarning.setMargin(new java.awt.Insets(0, 0, 0, 0));
-
-        debug.setText("Debug mode");
+        
+        debug.setText(rb.getString("DEBUG"));
         debug.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
         debug.setEnabled(false);
         debug.setMargin(new java.awt.Insets(0, 0, 0, 0));
 
         btnCancel.setMnemonic('C');
-        btnCancel.setText("Cancel");
+        btnCancel.setText(rb.getString("CANCEL"));
 
         btnOk.setMnemonic('O');
-        btnOk.setText("OK");
+        btnOk.setText(rb.getString("OK"));
 
         btnApply.setMnemonic('A');
-        btnApply.setText("Apply");
+        btnApply.setText(rb.getString("APPLY"));
 
-        reset.setText("Restore Defaults");
+        reset.setText(rb.getString("RESTOREDEF"));
 
-        jPanel2.setBorder(javax.swing.BorderFactory.createTitledBorder("Background"));
-        lblAxis.setText("Axis Cell:");
+        jPanel2.setBorder(javax.swing.BorderFactory.createTitledBorder(
+                rb.getString("BAKGND")));
+        lblAxis.setText(rb.getString("AXIS"));
 
-        lblHighlight.setText("Highlighted Cell:");
-        lblSelect.setText("Selected Cell:");
+        lblHighlight.setText(rb.getString("HLTCELL"));
+        lblSelect.setText(rb.getString("SLTDCELL"));
 
-        lblMin.setText("Minimum Value:");
+        lblMin.setText(rb.getString("MINVALUE"));
 
-        lblMax.setText("Maximum Value:");
+        lblMax.setText(rb.getString("MAXVALUE"));
 
         maxColor.setBackground(new java.awt.Color(255, 0, 0));
         maxColor.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
@@ -277,7 +304,7 @@ public class SettingsForm extends JFrame implements MouseListener {
         warningColor.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
         warningColor.setOpaque(true);
 
-        lblWarning.setText("Warning:");
+        lblWarning.setText(rb.getString("WARNING"));
 
         GroupLayout jPanel2Layout = new GroupLayout(jPanel2);
         jPanel2Layout.setHorizontalGroup(
@@ -339,8 +366,8 @@ public class SettingsForm extends JFrame implements MouseListener {
                 );
         jPanel2.setLayout(jPanel2Layout);
 
-        jPanel3.setBorder(javax.swing.BorderFactory.createTitledBorder("Cell Borders"));
-        lblIncrease.setText("Increased:");
+        jPanel3.setBorder(javax.swing.BorderFactory.createTitledBorder(rb.getString("CELLBDR")));
+        lblIncrease.setText(rb.getString("INCRSD"));
 
         increaseColor.setBackground(new java.awt.Color(255, 0, 0));
         increaseColor.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
@@ -350,57 +377,88 @@ public class SettingsForm extends JFrame implements MouseListener {
         decreaseColor.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
         decreaseColor.setOpaque(true);
 
-        lblDecrease.setText("Decreased:");
+        lblDecrease.setText(rb.getString("DECRSD"));
+
+        liveValueColor.setBackground(new java.awt.Color(255, 0, 0));
+        liveValueColor.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
+        liveValueColor.setOpaque(true);
+
+        lblLiveValue.setText(rb.getString("STLLIVE"));
+
+        curLiveValueColor.setBackground(new java.awt.Color(255, 0, 0));
+        curLiveValueColor.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
+        curLiveValueColor.setOpaque(true);
+
+        lblCurLiveValue.setText(rb.getString("CNTLIVE"));
 
         GroupLayout jPanel3Layout = new GroupLayout(jPanel3);
         jPanel3.setLayout(jPanel3Layout);
         jPanel3Layout.setHorizontalGroup(
-                jPanel3Layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-                .addGroup(GroupLayout.Alignment.TRAILING, jPanel3Layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addComponent(lblIncrease)
-                        .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
+            jPanel3Layout.createParallelGroup(Alignment.TRAILING)
+                .addGroup(jPanel3Layout.createSequentialGroup()
+                    .addContainerGap()
+
+                    .addGroup(jPanel3Layout.createParallelGroup(Alignment.TRAILING)
+                        .addComponent(lblLiveValue)
+                        .addComponent(lblIncrease))
+                    .addPreferredGap(ComponentPlacement.RELATED)
+                    .addGroup(jPanel3Layout.createParallelGroup(Alignment.TRAILING)
                         .addComponent(increaseColor, GroupLayout.PREFERRED_SIZE, 50, GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED, 59, Short.MAX_VALUE)
-                        .addComponent(lblDecrease)
-                        .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(decreaseColor, GroupLayout.PREFERRED_SIZE, 50, GroupLayout.PREFERRED_SIZE)
-                        .addContainerGap())
-                );
+                        .addComponent(liveValueColor, GroupLayout.PREFERRED_SIZE, 50, GroupLayout.PREFERRED_SIZE))
+                    .addPreferredGap(ComponentPlacement.RELATED, 110, Short.MAX_VALUE)
+                    .addGroup(jPanel3Layout.createParallelGroup(Alignment.LEADING)
+                        .addGroup(Alignment.TRAILING, jPanel3Layout.createSequentialGroup()
+                            .addComponent(lblCurLiveValue)
+                            .addPreferredGap(ComponentPlacement.RELATED)
+                            .addComponent(curLiveValueColor, GroupLayout.PREFERRED_SIZE, 50, GroupLayout.PREFERRED_SIZE))
+                        .addGroup(Alignment.TRAILING, jPanel3Layout.createSequentialGroup()
+                            .addComponent(lblDecrease)
+                            .addPreferredGap(ComponentPlacement.RELATED)
+                            .addComponent(decreaseColor, GroupLayout.PREFERRED_SIZE, 50, GroupLayout.PREFERRED_SIZE)))
+                    .addContainerGap())
+        );
         jPanel3Layout.setVerticalGroup(
-                jPanel3Layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-                .addGroup(jPanel3Layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                        .addComponent(decreaseColor, GroupLayout.PREFERRED_SIZE, 15, GroupLayout.PREFERRED_SIZE)
-                        .addComponent(lblDecrease)
-                        .addComponent(lblIncrease)
+            jPanel3Layout.createParallelGroup(Alignment.LEADING)
+                .addGroup(jPanel3Layout.createSequentialGroup()
+                    .addGroup(jPanel3Layout.createParallelGroup(Alignment.LEADING)
+                        .addGroup(jPanel3Layout.createParallelGroup(Alignment.BASELINE)
+                            .addComponent(decreaseColor, GroupLayout.PREFERRED_SIZE, 15, GroupLayout.PREFERRED_SIZE)
+                            .addComponent(lblDecrease)
+                            .addComponent(lblIncrease))
                         .addComponent(increaseColor, GroupLayout.PREFERRED_SIZE, 15, GroupLayout.PREFERRED_SIZE))
-                );
+                    .addPreferredGap(ComponentPlacement.RELATED, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addGroup(jPanel3Layout.createParallelGroup(Alignment.BASELINE)
+                        .addComponent(lblLiveValue)
+                        .addComponent(liveValueColor, GroupLayout.PREFERRED_SIZE, 15, GroupLayout.PREFERRED_SIZE)
+                        .addComponent(lblCurLiveValue)
+                        .addComponent(curLiveValueColor, GroupLayout.PREFERRED_SIZE, 15, GroupLayout.PREFERRED_SIZE)))
+        );
 
-        lblCellHeight.setText("Cell Height:");
+        lblCellHeight.setText(rb.getString("CELLHT"));
 
-        lblCellWidth.setText("Cell Width:");
+        lblCellWidth.setText(rb.getString("CELLWD"));
 
-        lblFont.setText("Font:");
+        lblFont.setText(rb.getString("FONT"));
 
-        btnChooseFont.setText("Choose");
+        btnChooseFont.setText(rb.getString("CHOOSE"));
 
-        saveDebugTables.setText("Save changes made on tables in debug mode");
+        saveDebugTables.setText(rb.getString("SAVEDEBUG"));
         saveDebugTables.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
         saveDebugTables.setMargin(new java.awt.Insets(0, 0, 0, 0));
 
-        displayHighTables.setText("List tables that are above my userlevel");
+        displayHighTables.setText(rb.getString("LISTTBLS"));
         displayHighTables.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
         displayHighTables.setMargin(new java.awt.Insets(0, 0, 0, 0));
 
-        valueLimitWarning.setText("Warn when values exceed limits");
+        valueLimitWarning.setText(rb.getString("WARNUSER"));
         valueLimitWarning.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
         valueLimitWarning.setMargin(new java.awt.Insets(0, 0, 0, 0));
 
-        chckbxColorAxis.setText("Color Axis");
+        chckbxColorAxis.setText(rb.getString("CLRAXIS"));
         chckbxColorAxis.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
         chckbxColorAxis.setMargin(new java.awt.Insets(0, 0, 0, 0));
 
-        jPanel4.setBorder(javax.swing.BorderFactory.createTitledBorder("File Associations"));
+        jPanel4.setBorder(javax.swing.BorderFactory.createTitledBorder(rb.getString("FILEASSOC")));
         extensionHex.setText("HEX");
         extensionHex.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
         extensionHex.setMargin(new java.awt.Insets(0, 0, 0, 0));
@@ -409,9 +467,9 @@ public class SettingsForm extends JFrame implements MouseListener {
         extensionBin.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
         extensionBin.setMargin(new java.awt.Insets(0, 0, 0, 0));
 
-        btnAddAssocs.setText("Add Associations");
+        btnAddAssocs.setText(rb.getString("ADDASSOC"));
 
-        btnRemoveAssocs.setText("Remove Associations");
+        btnRemoveAssocs.setText(rb.getString("RMVASSOC"));
 
         GroupLayout jPanel4Layout = new GroupLayout(jPanel4);
         jPanel4.setLayout(jPanel4Layout);
@@ -442,16 +500,16 @@ public class SettingsForm extends JFrame implements MouseListener {
 
         initTabs();
 
-        settingsTabbedPane.addTab("General", jPanelDefault);
-        settingsTabbedPane.addTab("Table Display", jPanelTableDisplay);
-        settingsTabbedPane.addTab("Clipboard", jPanelClipboard);
-        settingsTabbedPane.addTab("Icons", jPanelIcons);
-        settingsTabbedPane.addTab("Scale", jPanelScale);
+        settingsTabbedPane.addTab(rb.getString("TABGEN"), jPanelDefault);
+        settingsTabbedPane.addTab(rb.getString("TABTABL"), jPanelTableDisplay);
+        settingsTabbedPane.addTab(rb.getString("TABCLIP"), jPanelClipboard);
+        settingsTabbedPane.addTab(rb.getString("TABICON"), jPanelIcons);
+        settingsTabbedPane.addTab(rb.getString("TABSCAL"), jPanelScale);
 
-        this.cbScaleHeaderAndData = new JCheckBox("Scale Headers and Data.");
-        this.cbScaleHeaderAndData.setToolTipText("If checked, the header scale will change when the data scale is selected.  Otherwise click on a header row or column to select the scale.");
+        this.cbScaleHeaderAndData = new JCheckBox(rb.getString("SCLHEADER"));
+        this.cbScaleHeaderAndData.setToolTipText(rb.getString("SCLHEADERTT"));
 
-        JLabel lblDefaultScale = new JLabel("Default Scale:");
+        JLabel lblDefaultScale = new JLabel(rb.getString("DEFSCALE"));
 
         comboBoxDefaultScale.setModel(new DefaultComboBoxModel(new String[] { Settings.DEFAULT_SCALE, Settings.METRIC_SCALE, Settings.STANDARD_SCALE}));
 
@@ -521,7 +579,10 @@ public class SettingsForm extends JFrame implements MouseListener {
     private void initTabs() {
 
         JPanel panelUISettings = new JPanel();
-        panelUISettings.setBorder(new TitledBorder(UIManager.getBorder("TitledBorder.border"), "UI Settings", TitledBorder.LEADING, TitledBorder.TOP, null, null));
+        panelUISettings.setBorder(new TitledBorder(UIManager.getBorder(
+                "TitledBorder.border"),
+                rb.getString("UISETTINGS"),
+                TitledBorder.LEADING, TitledBorder.TOP, null, null));
         // Init Default Tab Panel
         GroupLayout jPanelDefaultLayout = new GroupLayout(jPanelDefault);
         jPanelDefaultLayout.setHorizontalGroup(
@@ -532,6 +593,7 @@ public class SettingsForm extends JFrame implements MouseListener {
                                 .addComponent(panelUISettings, GroupLayout.DEFAULT_SIZE, 407, Short.MAX_VALUE)
                                 .addComponent(obsoleteWarning)
                                 .addComponent(calcConflictWarning)
+                                .addComponent(localeFormatCheckBox)
                                 .addComponent(debug))
                                 .addContainerGap())
                 );
@@ -543,19 +605,22 @@ public class SettingsForm extends JFrame implements MouseListener {
                         .addPreferredGap(ComponentPlacement.RELATED)
                         .addComponent(calcConflictWarning)
                         .addPreferredGap(ComponentPlacement.RELATED)
+                        .addComponent(localeFormatCheckBox)
+                        .addPreferredGap(ComponentPlacement.RELATED)
                         .addComponent(debug)
                         .addPreferredGap(ComponentPlacement.RELATED)
                         .addComponent(panelUISettings, GroupLayout.PREFERRED_SIZE, 173, GroupLayout.PREFERRED_SIZE)
                         .addContainerGap(267, Short.MAX_VALUE))
                 );
-        chckbxOpenRomNode = new JCheckBox("Open rom node expanded");
+        chckbxOpenRomNode = new JCheckBox(rb.getString("ORNE"));
 
-        chckbxShowTableToolbar = new JCheckBox("Show table toolbar border");
+        chckbxShowTableToolbar = new JCheckBox(rb.getString("STTB"));
 
         panelTreeSettings = new JPanel();
-        panelTreeSettings.setBorder(new TitledBorder(null, "Rom Tree Settings", TitledBorder.LEADING, TitledBorder.TOP, null, null));
+        panelTreeSettings.setBorder(new TitledBorder(null, rb.getString("RTS"),
+                TitledBorder.LEADING, TitledBorder.TOP, null, null));
 
-        chckbxOpenTablesAt = new JCheckBox("Always open tables at [0,0]");
+        chckbxOpenTablesAt = new JCheckBox(rb.getString("AOA00"));
         GroupLayout gl_panelUISettings = new GroupLayout(panelUISettings);
         gl_panelUISettings.setHorizontalGroup(
                 gl_panelUISettings.createParallelGroup(Alignment.LEADING)
@@ -581,11 +646,13 @@ public class SettingsForm extends JFrame implements MouseListener {
                         .addComponent(panelTreeSettings, GroupLayout.PREFERRED_SIZE, 69, GroupLayout.PREFERRED_SIZE))
                 );
 
-        labelTableClick.setText("Click to open tables");
-        tableClickCount.setModel(new javax.swing.DefaultComboBoxModel(new String[]{"Single", "Double"}));
-        tableClickBehavior.setModel(new DefaultComboBoxModel(new String[] {"open/close", "open/focus"}));
+        labelTableClick.setText(rb.getString("CTOT"));
+        tableClickCount.setModel(new javax.swing.DefaultComboBoxModel(
+                new String[]{rb.getString("SINGLE"), rb.getString("DOUBLE")}));
+        tableClickBehavior.setModel(new DefaultComboBoxModel(
+                new String[] {rb.getString("OPENCLOSE"), rb.getString("OPENFOCUS")}));
 
-        lblClickBehavior = new JLabel("Table click behavior");
+        lblClickBehavior = new JLabel(rb.getString("TCB"));
         GroupLayout gl_panelTreeSettings = new GroupLayout(panelTreeSettings);
         gl_panelTreeSettings.setHorizontalGroup(
                 gl_panelTreeSettings.createParallelGroup(Alignment.LEADING)
@@ -719,8 +786,10 @@ public class SettingsForm extends JFrame implements MouseListener {
         jPanelClipboard.setLayout(jPanelClipboardLayout);
 
         // Init Icons Tab panel
-        editorIconsPanel.setBorder(new TitledBorder(null, "Editor Toolbar Icons", TitledBorder.LEADING, TitledBorder.TOP, null, null));
-        tableIconsPanel.setBorder(new TitledBorder(null, "Table Toolbar Icons", TitledBorder.LEADING, TitledBorder.TOP, null, null));
+        editorIconsPanel.setBorder(new TitledBorder(null, rb.getString("ETI"),
+                TitledBorder.LEADING, TitledBorder.TOP, null, null));
+        tableIconsPanel.setBorder(new TitledBorder(null, rb.getString("TTI"),
+                TitledBorder.LEADING, TitledBorder.TOP, null, null));
 
         GroupLayout jPanelIconsLayout = new GroupLayout(jPanelIcons);
         jPanelIconsLayout.setHorizontalGroup(
@@ -742,10 +811,10 @@ public class SettingsForm extends JFrame implements MouseListener {
                         .addContainerGap(367, Short.MAX_VALUE))
                 );
 
-        JLabel lblTableIconScale = new JLabel("Scale:");
+        JLabel lblTableIconScale = new JLabel(rb.getString("SCALE"));
 
         textFieldTableIconScale = new JTextField();
-        textFieldTableIconScale.setToolTipText("The percentage of the icons original size.");
+        textFieldTableIconScale.setToolTipText(rb.getString("SCALEPER"));
         textFieldTableIconScale.setColumns(10);
 
         JLabel labelTableScalePercent = new JLabel("%");
@@ -773,10 +842,10 @@ public class SettingsForm extends JFrame implements MouseListener {
                 );
         tableIconsPanel.setLayout(tableIconsPanelLayout);
 
-        JLabel lblEditorIconScale = new JLabel("Scale:");
+        JLabel lblEditorIconScale = new JLabel(rb.getString("SCALE"));
 
         textFieldEditorIconScale = new JTextField();
-        textFieldEditorIconScale.setToolTipText("The percentage of the icons original size.");
+        textFieldEditorIconScale.setToolTipText(rb.getString("SCALEPER"));
         textFieldEditorIconScale.setColumns(10);
 
         JLabel labelEditorScalePercent = new JLabel("%");
@@ -812,49 +881,61 @@ public class SettingsForm extends JFrame implements MouseListener {
         Settings settings = getSettings();
         if (e.getSource() == maxColor) {
             Color color = JColorChooser.showDialog(this.getContentPane(),
-                    "Background Color", settings.getMaxColor());
+                    rb.getString("BGCOLOR"), settings.getMaxColor());
             if (color != null) {
                 maxColor.setBackground(color);
             }
         } else if (e.getSource() == minColor) {
             Color color = JColorChooser.showDialog(this.getContentPane(),
-                    "Background Color", settings.getMinColor());
+                    rb.getString("BGCOLOR"), settings.getMinColor());
             if (color != null) {
                 minColor.setBackground(color);
             }
         } else if (e.getSource() == highlightColor) {
             Color color = JColorChooser.showDialog(this.getContentPane(),
-                    "Background Color", settings.getHighlightColor());
+                    rb.getString("BGCOLOR"), settings.getHighlightColor());
             if (color != null) {
                 highlightColor.setBackground(color);
             }
         } else if (e.getSource() == selectColor) {
             Color color = JColorChooser.showDialog(this.getContentPane(),
-                    "Background Color", settings.getSelectColor());
+                    rb.getString("BGCOLOR"), settings.getSelectColor());
             if (color != null) {
                 selectColor.setBackground(color);
             }
         } else if (e.getSource() == axisColor) {
             Color color = JColorChooser.showDialog(this.getContentPane(),
-                    "Background Color", settings.getAxisColor());
+                    rb.getString("BGCOLOR"), settings.getAxisColor());
             if (color != null) {
                 axisColor.setBackground(color);
             }
         } else if (e.getSource() == increaseColor) {
             Color color = JColorChooser.showDialog(this.getContentPane(),
-                    "Background Color", settings.getIncreaseBorder());
+                    rb.getString("BGCOLOR"), settings.getIncreaseBorder());
             if (color != null) {
                 increaseColor.setBackground(color);
             }
         } else if (e.getSource() == decreaseColor) {
             Color color = JColorChooser.showDialog(this.getContentPane(),
-                    "Background Color", settings.getDecreaseBorder());
+                    rb.getString("BGCOLOR"), settings.getDecreaseBorder());
             if (color != null) {
                 decreaseColor.setBackground(color);
             }
+        } else if (e.getSource() == liveValueColor) {
+            Color color = JColorChooser.showDialog(this.getContentPane(),
+                    rb.getString("BGCOLOR"), settings.getliveValueColor());
+            if (color != null) {
+                liveValueColor.setBackground(color);
+            }
+        } else if (e.getSource() == curLiveValueColor) {
+            Color color = JColorChooser.showDialog(this.getContentPane(),
+                    rb.getString("BGCOLOR"), settings.getCurLiveValueColor());
+            if (color != null) {
+                curLiveValueColor.setBackground(color);
+            }
         } else if (e.getSource() == warningColor) {
             Color color = JColorChooser.showDialog(this.getContentPane(),
-                    "Warning Color", settings.getWarningColor());
+                    rb.getString("WARNCOLOR"), settings.getWarningColor());
             if (color != null) {
                 warningColor.setBackground(color);
             }
@@ -896,21 +977,31 @@ public class SettingsForm extends JFrame implements MouseListener {
             boolean added = false;
             try {
                 if (extensionHex.isSelected()) {
-                    FileAssociator.addAssociation("HEX", new File(".").getCanonicalPath() + separator + PRODUCT_NAME + ".exe", "ECU Image");
+                    FileAssociator.addAssociation("HEX",
+                            new File(".").getCanonicalPath() + separator + PRODUCT_NAME + ".exe",
+                            rb.getString("ECIIMAG"));
                     added = true;
                 }
 
                 if (extensionBin.isSelected()) {
-                    FileAssociator.addAssociation("BIN", new File(".").getCanonicalPath() + separator + PRODUCT_NAME + ".exe", "ECU Image");
+                    FileAssociator.addAssociation("BIN",
+                            new File(".").getCanonicalPath() + separator + PRODUCT_NAME + ".exe",
+                            rb.getString("ECIIMAG"));
                     added = true;
                 }
             } catch (Exception ex) {
                 added = false;
             } finally {
                 if(added) {
-                    JOptionPane.showMessageDialog(null, "Association(s) added.", "Add Association Success", JOptionPane.INFORMATION_MESSAGE);
+                    JOptionPane.showMessageDialog(null,
+                            rb.getString("ASSOCADD1"),
+                            rb.getString("ASSOCADD2"),
+                            JOptionPane.INFORMATION_MESSAGE);
                 } else {
-                    JOptionPane.showMessageDialog(null, "Failed to add association(s).", "Add Association Failure", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(null,
+                            rb.getString("ASSOCFAIL1"),
+                            rb.getString("ASSOCFAIL2"),
+                            JOptionPane.ERROR_MESSAGE);
                 }
             }
 
@@ -926,9 +1017,15 @@ public class SettingsForm extends JFrame implements MouseListener {
             }
 
             if(removed) {
-                JOptionPane.showMessageDialog(null, "Association removed.", "Remove Association Success", JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(null,
+                        rb.getString("ASSOCRMV1"),
+                        rb.getString("ASSOCRMV2"),
+                        JOptionPane.INFORMATION_MESSAGE);
             } else {
-                JOptionPane.showMessageDialog(null, "Failed to remove association.", "Remove Association Failure", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(null,
+                        rb.getString("ASSOCRMVF1"),
+                        rb.getString("ASSOCRMVF2"),
+                        JOptionPane.ERROR_MESSAGE);
             }
         }
     }
@@ -943,11 +1040,26 @@ public class SettingsForm extends JFrame implements MouseListener {
         try {
             Integer.parseInt(cellWidth.getText());
         } catch (NumberFormatException ex) {
-            // number formatted imporperly, reset
+            // number formatted improperly, reset
             cellWidth.setText((int) (getSettings().getCellSize().getWidth()) + "");
         }
 
         getSettings().setObsoleteWarning(obsoleteWarning.isSelected());
+
+        //Apply locale settings
+        if (localeFormatCheckBox.isSelected()) 
+            getSettings().setLocale("en_US");       
+        else 
+            getSettings().setLocale("system");
+        
+        //Show Info if locale changed
+        if(!oldLocale.equals(getSettings().getLocale())){
+        showMessageDialog(this, MessageFormat.format(
+                rb.getString("LOCALEMSG"),
+                getSettings().getLocale()),
+                rb.getString("LOCALETITLE"), INFORMATION_MESSAGE);
+        }
+        
         getSettings().setCalcConflictWarning(calcConflictWarning.isSelected());
         getSettings().setDisplayHighTables(displayHighTables.isSelected());
         getSettings().setSaveDebugTables(saveDebugTables.isSelected());
@@ -963,6 +1075,8 @@ public class SettingsForm extends JFrame implements MouseListener {
         getSettings().setAxisColor(axisColor.getBackground());
         getSettings().setIncreaseBorder(increaseColor.getBackground());
         getSettings().setDecreaseBorder(decreaseColor.getBackground());
+        getSettings().setLiveValueColor(liveValueColor.getBackground());
+        getSettings().setCurLiveValueColor(curLiveValueColor.getBackground());
 
         getSettings().setScaleHeadersAndData(this.cbScaleHeaderAndData.isSelected());
 
@@ -1076,6 +1190,7 @@ public class SettingsForm extends JFrame implements MouseListener {
     private javax.swing.JCheckBox calcConflictWarning;
     private javax.swing.JTextField cellHeight;
     private javax.swing.JTextField cellWidth;
+    private javax.swing.JLabel curLiveValueColor;
     private javax.swing.JCheckBox debug;
     private javax.swing.JLabel decreaseColor;
     private javax.swing.JCheckBox displayHighTables;
@@ -1098,14 +1213,17 @@ public class SettingsForm extends JFrame implements MouseListener {
     private javax.swing.JLabel lblAxis;
     private javax.swing.JLabel lblCellHeight;
     private javax.swing.JLabel lblCellWidth;
+    private javax.swing.JLabel lblCurLiveValue;
     private javax.swing.JLabel lblDecrease;
     private javax.swing.JLabel lblFont;
     private javax.swing.JLabel lblHighlight;
     private javax.swing.JLabel lblSelect;
     private javax.swing.JLabel lblIncrease;
+    private javax.swing.JLabel lblLiveValue;
     private javax.swing.JLabel lblMax;
     private javax.swing.JLabel lblMin;
     private javax.swing.JLabel lblWarning;
+    private javax.swing.JLabel liveValueColor;
     private javax.swing.JLabel maxColor;
     private javax.swing.JLabel minColor;
     private javax.swing.JCheckBox obsoleteWarning;
@@ -1131,4 +1249,6 @@ public class SettingsForm extends JFrame implements MouseListener {
     private javax.swing.JTextField defaultScale;
     private javax.swing.JComboBox comboBoxDefaultScale;
     private javax.swing.JCheckBox cbScaleHeaderAndData;
+    private javax.swing.JCheckBox localeFormatCheckBox;
+    private String oldLocale;
 }

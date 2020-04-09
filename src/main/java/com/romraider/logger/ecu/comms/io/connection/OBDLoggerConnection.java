@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2015 RomRaider.com
+ * Copyright (C) 2006-2020 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -83,7 +83,11 @@ public final class OBDLoggerConnection implements LoggerConnection {
                 module, asHex(response)));
         System.arraycopy(response, 0, processedResponse, 0, response.length);
         int j = 7;
+        // try to find the string termination character 0x00 in the response
         while (response[j] != 0 && j < response.length) { j++; }
+        // make sure j is not pointing to a position past the end of the string
+        // if the termination character 0x00 was not found
+        if (j == response.length) { j--; }
         final byte[] calIdStr = new byte[j - 7];
         System.arraycopy(response, 7, calIdStr, 0, j - 7);
         System.arraycopy(calIdStr, 0, processedResponse, 5, 8);
@@ -144,7 +148,7 @@ public final class OBDLoggerConnection implements LoggerConnection {
             }
             final byte[] request = protocol.constructReadAddressRequest(
                     module, obdQueries);
-            LOGGER.debug(String.format("Mode:%d %s Request  ---> %s",
+            LOGGER.debug(String.format("Mode:%s %s Request  ---> %s",
                     pollState.getCurrentState(), module, asHex(request)));
 
             final byte[] response = protocol.constructReadAddressResponse(
@@ -152,7 +156,7 @@ public final class OBDLoggerConnection implements LoggerConnection {
             manager.send(request, response, pollState);
             final byte[] processedResponse = protocol.preprocessResponse(
                     request, response, pollState);
-            LOGGER.debug(String.format("Mode:%d %s Response <--- %s",
+            LOGGER.debug(String.format("Mode:%s %s Response <--- %s",
                     pollState.getCurrentState(), module, asHex(processedResponse)));
             protocol.processReadAddressResponses(
                     obdQueries, processedResponse, pollState);

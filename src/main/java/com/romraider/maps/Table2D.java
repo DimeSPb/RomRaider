@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2012 RomRaider.com
+ * Copyright (C) 2006-2020 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -44,21 +44,33 @@ import com.romraider.util.SettingsManager;
 
 public class Table2D extends Table {
     private static final long serialVersionUID = -7684570967109324784L;
-    private Table1D axis = new Table1D();
+    private Table1D axis = new Table1D(Table.TableType.Y_AXIS);
     private JLabel axisLabel;
 
     private CopyTable2DWorker copyTable2DWorker;
     private CopySelection2DWorker copySelection2DWorker;
 
     public Table2D() {
-        super();
         verticalOverhead += 18;
+    }
+
+    @Override
+    public TableType getType() {
+        return TableType.TABLE_2D;
     }
 
     public Table1D getAxis() {
         return axis;
     }
-
+    
+    public JLabel getAxisLabel() {
+    	return axisLabel;
+    }
+    
+    public void setAxisLabel(JLabel label) {
+    	axisLabel = label;
+    }
+    
     public void setAxis(Table1D axis) {
         this.axis = axis;
         axis.setAxisParent(this);
@@ -140,7 +152,7 @@ public class Table2D extends Table {
             }
         }
 
-        if(null == axis.getName() || axis.getName().isEmpty() || "" == axis.getName()) {
+        if(null == axis.getName() || axis.getName().isEmpty() || Settings.BLANK == axis.getName()) {
             ;// Do not add label.
         } else if(null == axis.getCurrentScale() || "0x" == axis.getCurrentScale().getUnit()) {
             // static or no scale exists.
@@ -158,7 +170,7 @@ public class Table2D extends Table {
 
     @Override
     public void updateTableLabel() {
-        if(null == axis.getName() || axis.getName().length() < 1 || "" == axis.getName()) {
+        if(null == axis.getName() || axis.getName().length() < 1 || Settings.BLANK == axis.getName()) {
             ;// Do not update label.
         } else if(null == axis.getCurrentScale() || "0x" == axis.getCurrentScale().getUnit()) {
             // static or no scale exists.
@@ -237,6 +249,37 @@ public class Table2D extends Table {
         }
     }
 
+	@Override
+	public void shiftCursorUp() {
+        if (data[highlightY].isSelected()) {
+        	data[highlightY].setSelected(false);
+        }
+        axis.selectCellAt(highlightY);
+	}
+
+	@Override
+	public void shiftCursorDown() {
+        axis.cursorDown();
+	}
+
+	@Override
+	public void shiftCursorLeft() {
+        if (highlightY > 0 && data[highlightY].isSelected()) {
+        	selectCellAtWithoutClear(highlightY - 1);
+        } else {
+        	axis.shiftCursorLeft();
+        }
+	}
+
+	@Override
+	public void shiftCursorRight() {
+        if (highlightY < data.length - 1 && data[highlightY].isSelected()) {
+        	selectCellAtWithoutClear(highlightY + 1);
+        } else {
+        	axis.shiftCursorRight();
+        }
+	}
+
     @Override
     public void startHighlight(int x, int y) {
         axis.clearSelectedData();
@@ -270,11 +313,11 @@ public class Table2D extends Table {
 
     @Override
     public void paste() {
-        StringTokenizer st = new StringTokenizer("");
-        String input = "";
+        StringTokenizer st = new StringTokenizer(Settings.BLANK);
+        String input = Settings.BLANK;
         try {
             input = (String) Toolkit.getDefaultToolkit().getSystemClipboard().getContents(null).getTransferData(DataFlavor.stringFlavor);
-            st = new StringTokenizer(input);
+            st = new StringTokenizer(input, ST_DELIMITER);
         } catch (UnsupportedFlavorException ex) { /* wrong paste type -- do nothing */
         } catch (IOException ex) {
         }
@@ -282,7 +325,12 @@ public class Table2D extends Table {
         String pasteType = st.nextToken();
 
         if (pasteType.equalsIgnoreCase("[Table2D]")) { // Paste table
-            String axisValues = "[Table1D]" + Settings.NEW_LINE + st.nextToken(Settings.NEW_LINE);
+            String currentToken = st.nextToken(Settings.NEW_LINE);
+            if (currentToken.endsWith("\t")) {
+                currentToken = st.nextToken(Settings.NEW_LINE);
+            }
+
+            String axisValues = "[Table1D]" + Settings.NEW_LINE + currentToken;
             String dataValues = "[Table1D]" + Settings.NEW_LINE + st.nextToken(Settings.NEW_LINE);
 
             // put axis in clipboard and paste
@@ -363,6 +411,8 @@ public class Table2D extends Table {
     @Override
     public void updateLiveDataHighlight() {
         if (getOverlayLog()) {
+            data[axis.getPreviousLiveDataIndex()].setPreviousLiveDataTrace(true);
+            data[axis.getLiveDataIndex()].setPreviousLiveDataTrace(false);
             data[axis.getLiveDataIndex()].setLiveDataTrace(true);
         }
     }
@@ -379,19 +429,16 @@ public class Table2D extends Table {
     public void setOverlayLog(boolean overlayLog) {
         super.setOverlayLog(overlayLog);
         axis.setOverlayLog(overlayLog);
-        if (overlayLog) {
-            axis.clearLiveDataTrace();
-        }
     }
 
     @Override
-    public void setCompareDisplay(int compareDisplay) {
+    public void setCompareDisplay(Settings.CompareDisplay compareDisplay) {
         super.setCompareDisplay(compareDisplay);
         axis.setCompareDisplay(compareDisplay);
     }
 
     @Override
-    public void setCompareValueType(int compareValueType) {
+    public void setCompareValueType(Settings.DataType compareValueType) {
         super.setCompareValueType(compareValueType);
         axis.setCompareValueType(compareValueType);
     }

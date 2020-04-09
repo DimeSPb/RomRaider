@@ -2,6 +2,7 @@
 <classpath>
 	<classpathentry kind="src" path="src/main/java"/>
 	<classpathentry kind="src" path="src/main/resources"/>
+	<classpathentry kind="src" path="src/test/java"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="lib/common/com4j.jar"/>
 	<classpathentry kind="lib" path="lib/windows/j3dcore.jar"/>
@@ -10,7 +11,6 @@
 	<classpathentry kind="lib" path="lib/windows/Graph3d.jar"/>
 	<classpathentry kind="lib" path="lib/common/jama-1.0.2.jar"/>
 	<classpathentry kind="lib" path="lib/common/jep.jar"/>
-	<classpathentry kind="lib" path="lib/common/Jama.jar"/>
 	<classpathentry kind="lib" path="lib/common/jamlab.jar"/>
 	<classpathentry kind="lib" path="lib/common/log4j-1.2.14.jar"/>
 	<classpathentry kind="lib" path="lib/common/cmu_time_awb.jar"/>
@@ -44,5 +44,6 @@
 			<attribute name="javadoc_location" value="http://www.phidgets.com/documentation/web/javadoc/"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
 	<classpathentry kind="output" path="target"/>
 </classpath>

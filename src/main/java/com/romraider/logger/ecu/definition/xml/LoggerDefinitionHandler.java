@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2015 RomRaider.com
+ * Copyright (C) 2006-2018 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 
 package com.romraider.logger.ecu.definition.xml;
 
+import static com.romraider.Settings.COMMA;
 import static com.romraider.logger.ecu.definition.xml.ConverterMaxMinDefaults.getMax;
 import static com.romraider.logger.ecu.definition.xml.ConverterMaxMinDefaults.getMin;
 import static com.romraider.logger.ecu.definition.xml.ConverterMaxMinDefaults.getStep;
@@ -41,6 +42,7 @@ import org.xml.sax.helpers.DefaultHandler;
 
 import com.romraider.Settings;
 import com.romraider.io.connection.ConnectionProperties;
+import com.romraider.io.connection.KwpSerialConnectionProperties;
 import com.romraider.io.connection.SerialConnectionProperties;
 import com.romraider.logger.ecu.comms.query.EcuInit;
 import com.romraider.logger.ecu.definition.EcuAddress;
@@ -111,6 +113,9 @@ public final class LoggerDefinitionHandler extends DefaultHandler {
     private static final String ATTR_ADDRESS = "address";
     private static final String ATTR_TESTER = "tester";
     private static final String ATTR_FASTPOLL = "fastpoll";
+    private static final String ATTR_P1_MAX = "p1_max";
+    private static final String ATTR_P3_MIN = "p3_min";
+    private static final String ATTR_P4_MIN = "p4_min";
     private final String protocol;
     private final String fileLoggingControllerSwitchId;
     private final EcuInit ecuInit;
@@ -146,7 +151,7 @@ public final class LoggerDefinitionHandler extends DefaultHandler {
     private String conversionExpression;
     private String conversionFormat;
     private String conversionStorageType;
-    private int conversionEndian;
+    private Settings.Endian conversionEndian;
     private GaugeMinMax conversionGauge;
     private String target;
     private String version;
@@ -179,10 +184,19 @@ public final class LoggerDefinitionHandler extends DefaultHandler {
             protocolId = attributes.getValue(ATTR_ID);
             parseProtocol = protocol.equalsIgnoreCase(protocolId);
             if (parseProtocol) {
+                if ("NCS".equalsIgnoreCase(protocolId)) {
+                    connectionProperties = new KwpSerialConnectionProperties(Integer.parseInt(attributes.getValue(ATTR_BAUD)),
+                            Integer.parseInt(attributes.getValue(ATTR_DATABITS)), Integer.parseInt(attributes.getValue(ATTR_STOPBITS)),
+                            Integer.parseInt(attributes.getValue(ATTR_PARITY)), Integer.parseInt(attributes.getValue(ATTR_CONNECT_TIMEOUT)),
+                            Integer.parseInt(attributes.getValue(ATTR_SEND_TIMEOUT)), Integer.parseInt(attributes.getValue(ATTR_P1_MAX)),
+                            Integer.parseInt(attributes.getValue(ATTR_P3_MIN)), Integer.parseInt(attributes.getValue(ATTR_P4_MIN)));
+                }
+                else {
                 connectionProperties = new SerialConnectionProperties(Integer.parseInt(attributes.getValue(ATTR_BAUD)),
                         Integer.parseInt(attributes.getValue(ATTR_DATABITS)), Integer.parseInt(attributes.getValue(ATTR_STOPBITS)),
                         Integer.parseInt(attributes.getValue(ATTR_PARITY)), Integer.parseInt(attributes.getValue(ATTR_CONNECT_TIMEOUT)),
                         Integer.parseInt(attributes.getValue(ATTR_SEND_TIMEOUT)));
+                }
             }
             transportMap = new HashMap<Transport, Collection<Module>>();
         } else if (TAG_TRANSPORT.equals(qName)) {
@@ -234,10 +248,10 @@ public final class LoggerDefinitionHandler extends DefaultHandler {
                 conversionStorageType = attributes.getValue(ATTR_STORAGETYPE);
                 String endian = attributes.getValue(ATTR_ENDIAN);
                 if (endian != null) {
-                    conversionEndian = endian.equalsIgnoreCase("little") ? Settings.ENDIAN_LITTLE : Settings.ENDIAN_BIG;
+                    conversionEndian = endian.equalsIgnoreCase("little") ? Settings.Endian.LITTLE : Settings.Endian.BIG;
                 }
                 else {
-                    conversionEndian = Settings.ENDIAN_BIG;
+                    conversionEndian = Settings.Endian.BIG;
                 }
                 double gaugeMin = getConversionMin(attributes, conversionUnits);
                 double gaugeMax = getConversionMax(attributes, conversionUnits);
@@ -259,6 +273,8 @@ public final class LoggerDefinitionHandler extends DefaultHandler {
                 group = attributes.getValue(ATTR_GROUP);
                 subgroup = attributes.getValue(ATTR_SUBGROUP);
                 groupsize = attributes.getValue(ATTR_GROUPSIZE);
+                conversionStorageType = attributes.getValue(ATTR_STORAGETYPE);
+                conversionUnits = attributes.getValue(ATTR_UNITS);
                 target = attributes.getValue(ATTR_TARGET);
                 address = new EcuAddressImpl(attributes.getValue(ATTR_BYTE), 1, Integer.valueOf(attributes.getValue(ATTR_BIT)));
                 resetLists();
@@ -359,14 +375,18 @@ public final class LoggerDefinitionHandler extends DefaultHandler {
             } else if (TAG_ECU.equals(qName)) {
                 address = new EcuAddressImpl(addrStrings.toArray(new String[0]), addressLength, addressBit);
                 EcuAddressCreated = true;
-                for (String ecuId : ecuIds.split(",")) {
+                for (String ecuId : ecuIds.split(COMMA)) {
                     ecuAddressMap.put(ecuId, address);
                 }
                 addrStrings.clear();
             } else if (TAG_SWITCH.equals(qName)) {
                 if (ecuByteIndex == null || ecuBit == null || ecuInit == null || isSupportedParameter(ecuInit,
                         ecuByteIndex, ecuBit)) {
-                    EcuDataConvertor[] convertors = new EcuDataConvertor[]{new EcuSwitchConvertorImpl(address.getBit())};
+                    EcuDataConvertor[] convertors =
+                            new EcuDataConvertor[]{new EcuSwitchConvertorImpl(
+                                    address.getBit(),
+                                    conversionStorageType,
+                                    conversionUnits)};
                     EcuSwitch ecuSwitch = new EcuSwitchImpl(
                             id, name, desc, address,
                             group, subgroup, groupsize, convertors);

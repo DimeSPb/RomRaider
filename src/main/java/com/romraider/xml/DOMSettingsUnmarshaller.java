@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2014 RomRaider.com
+ * Copyright (C) 2006-2019 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -235,6 +235,12 @@ public final class DOMSettingsUnmarshaller {
             } else if (n.getNodeType() == ELEMENT_NODE && n.getNodeName().equalsIgnoreCase("warning")) {
                 settings.setWarningColor(unmarshallColor(n));
 
+            } else if (n.getNodeType() == ELEMENT_NODE && n.getNodeName().equalsIgnoreCase("livevalue")) {
+                settings.setLiveValueColor(unmarshallColor(n));
+
+            } else if (n.getNodeType() == ELEMENT_NODE && n.getNodeName().equalsIgnoreCase("curlivevalue")) {
+                settings.setCurLiveValueColor(unmarshallColor(n));
+
             }
         }
         return settings;
@@ -291,6 +297,15 @@ public final class DOMSettingsUnmarshaller {
 
             } else if (n.getNodeType() == ELEMENT_NODE && n.getNodeName().equalsIgnoreCase("debug")) {
                 settings.setLoggerDebuggingLevel(unmarshallAttribute(n, "level", "info"));
+
+            } else if (n.getNodeType() == ELEMENT_NODE && n.getNodeName().equalsIgnoreCase("gauge")) {
+                settings.setLoggerSelectedGaugeIndex(unmarshallAttribute(n, "index", 0));
+
+            } else if (n.getNodeType() == ELEMENT_NODE && n.getNodeName().equalsIgnoreCase("dyno")) {
+                settings.setSelectedCar(unmarshallAttribute(n, "car", ""));
+                settings.setSelectedGear(unmarshallAttribute(n, "gear", "3"));
+                settings.setDynoThreshold(unmarshallAttribute(n, "threshold", "98"));
+                settings.setDynoThrottle(unmarshallAttribute(n, "units", "%"));
 
             } else if (n.getNodeType() == ELEMENT_NODE && n.getNodeName().equalsIgnoreCase("plugins")) {
                 Map<String, String> pluginPorts = new HashMap<String, String>();

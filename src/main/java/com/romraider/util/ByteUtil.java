@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2013 RomRaider.com
+ * Copyright (C) 2006-2020 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -100,6 +100,49 @@ public final class ByteUtil {
         }
         return -1;
     }
+    public static boolean isBitSet(byte b, int position) {
+    	return (b & 1 << position) != 0;
+    }
+
+    public static boolean[] byteToBoolArr(byte b) {
+        boolean boolArr[] = new boolean[8];
+        for(int i=0;i<8;i++) boolArr[i] = (b & (byte)(128 / Math.pow(2, i))) != 0;
+        return boolArr;
+    }
+    
+    public static byte booleanArrayToBit(boolean[] arr){
+      byte val = 0;
+      for (boolean b: arr) {
+        val <<= 1;
+        if (b) val |= 1;
+      }
+      return val;
+    }
+    
+    public static byte firstOneOfMask(int mask) {
+    	byte index = (byte) 0xFF;
+    	
+    	for(byte i=0; i < 32; i++) {
+    		if(((mask >> i) & 1) == 1) {
+    			index = i;
+    			break;
+    		}
+    	}
+    	
+    	return index;
+    }
+    
+    public static byte lengthOfMask(int mask) {
+    	byte counter = 0;
+    	
+    	for(byte i=0; i < 32; i++) {
+    		if(((mask >> i) & 1) == 1) {
+    			counter++;
+    		}
+    	}
+    	
+    	return counter;
+    }
 
     private static int[] computeFailure(byte[] pattern) {
         int[] failure = new int[pattern.length];
@@ -115,4 +158,6 @@ public final class ByteUtil {
         }
         return failure;
     }
+    
+    
 }

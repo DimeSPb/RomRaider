@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2015 RomRaider.com
+ * Copyright (C) 2006-2019 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,6 +24,10 @@ import static javax.swing.JOptionPane.ERROR_MESSAGE;
 import static javax.swing.JOptionPane.WARNING_MESSAGE;
 import static javax.swing.JOptionPane.showMessageDialog;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -31,6 +35,8 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
+import java.util.ResourceBundle;
 
 import javax.swing.SwingWorker;
 
@@ -41,11 +47,11 @@ import org.w3c.dom.Node;
 import com.romraider.Settings;
 import com.romraider.logger.ecu.EcuLogger;
 import com.romraider.logger.ecu.comms.io.connection.LoggerConnection;
-import com.romraider.logger.ecu.comms.learning.flkctable.SSMFlkcTableQueryBuilder;
 import com.romraider.logger.ecu.comms.learning.parameter.SSMParameter;
 import com.romraider.logger.ecu.comms.learning.parameter.SSMParameterCrossReference;
 import com.romraider.logger.ecu.comms.learning.parameter.ParameterIdComparator;
 import com.romraider.logger.ecu.comms.learning.tableaxis.SSMTableAxisQueryParameterSet;
+import com.romraider.logger.ecu.comms.learning.tables.SSMFlkcTableQueryBuilder;
 import com.romraider.logger.ecu.comms.manager.PollingStateImpl;
 import com.romraider.logger.ecu.comms.query.EcuQuery;
 import com.romraider.logger.ecu.comms.query.EcuQueryImpl;
@@ -61,6 +67,7 @@ import com.romraider.logger.ecu.ui.paramlist.ParameterListTableModel;
 import com.romraider.logger.ecu.ui.paramlist.ParameterRow;
 import com.romraider.logger.ecu.ui.swing.tools.SSMLearningTableValuesResultsPanel;
 import com.romraider.util.ParamChecker;
+import com.romraider.util.ResourceUtil;
 
 /**
  * This class manages the building of ECU queries and retrieving the data to
@@ -72,14 +79,16 @@ public final class SSMLearningTableValues extends SwingWorker<Void, Void>
 
     private static final Logger LOGGER =
             Logger.getLogger(SSMLearningTableValues.class);
-    private static final List<String> AF_TABLE_NAMES = Arrays.asList(
+    private static final ResourceBundle rb = new ResourceUtil().getBundle(
+            SSMLearningTableValues.class.getName());
+    private static List<String> AF_TABLE_NAMES = Arrays.asList(
             "A/F Learning #1 Airflow Ranges",
             "A/F Learning #1 Airflow Ranges ",
             "A/F Learning Airflow Ranges");
-    private static final List<String> FLKC_LOAD_TABLE_NAMES = Arrays.asList(
+    private static List<String> FLKC_LOAD_TABLE_NAMES = Arrays.asList(
             "Fine Correction Columns (Load)",
             "Fine Correction Columns (Load) ");
-    private static final List<String> FLKC_RPM_TABLE_NAMES = Arrays.asList(
+    private static List<String> FLKC_RPM_TABLE_NAMES = Arrays.asList(
             "Fine Correction Rows (RPM)",
             "Fine Correction Rows (RPM) ");
     private final Map<String, Object> vehicleInfo =
@@ -110,6 +119,7 @@ public final class SSMLearningTableValues extends SwingWorker<Void, Void>
         this.ecuDef = ecuDef;
         this.flkc = null;
         this.flkcAddr = 0;
+        loadProperties();
     }
 
     @Override
@@ -117,10 +127,9 @@ public final class SSMLearningTableValues extends SwingWorker<Void, Void>
         Document document = null;
         if (ecuDef.getEcuDefFile() == null) {
             showMessageDialog(logger,
-                    "ECU definition file not found or undefined. Learning\n" +
-                    "Table Values cannot be properly retrieved until an ECU\n" +
-                    "defintion is defined in the Editor's Definition Manager.",
-                    "ECU Defintion Missing", WARNING_MESSAGE);
+                    rb.getString("DEFNOTFOUND"),
+                    rb.getString("DEFMISSING"),
+                    WARNING_MESSAGE);
             return null;
         }
         else {
@@ -137,7 +146,7 @@ public final class SSMLearningTableValues extends SwingWorker<Void, Void>
         final boolean logging = logger.isLogging();
         if (logging) logger.stopLogging();
 
-        String message = "Retrieving vehicle info & A/F values...";
+        String message = rb.getString("GETAFVALUES");
         messageListener.reportMessage(message);
         buildVehicleInfoMap(ecuDef);
 
@@ -147,10 +156,31 @@ public final class SSMLearningTableValues extends SwingWorker<Void, Void>
                     settings.getLoggerConnectionProperties());
             try {
                 Collection<EcuQuery> queries = buildLearningQueries();
+                // Break queries into two sets to avoid the ECU packet limit
+                final int setSize = queries.size() / 2;
+                final Collection<EcuQuery> querySet1 = new ArrayList<EcuQuery>();
+                final Collection<EcuQuery> querySet2 = new ArrayList<EcuQuery>();
+                int s = 0;
+                for (EcuQuery q : queries) {
+                    if (s < setSize) {
+                        querySet1.add(q);
+                    }
+                    else {
+                        querySet2.add(q);
+                    }
+                    s++;
+                }
+                LOGGER.trace(
+                    String.format("Queries:%d, Set size:%d, Set 1 size:%d, Set 2 size:%d",
+                        queries.size(), setSize, querySet1.size(), querySet2.size()));
 
                 LOGGER.info(message);
                 connection.sendAddressReads(
-                        queries,
+                        querySet1,
+                        settings.getDestinationTarget(),
+                        new PollingStateImpl());
+                connection.sendAddressReads(
+                        querySet2,
                         settings.getDestinationTarget(),
                         new PollingStateImpl());
                 LOGGER.info("Current vehicle info & A/F values retrieved.");
@@ -160,7 +190,7 @@ public final class SSMLearningTableValues extends SwingWorker<Void, Void>
 
                 processEcuQueryResponses((List<EcuQuery>) queries);
 
-                message = "Retrieving A/F Learning ranges...";
+                message = rb.getString("GETAFSUCCESS");
                 messageListener.reportMessage(message);
                 String[] afRanges = new String[0];
                 queries.clear();
@@ -175,7 +205,7 @@ public final class SSMLearningTableValues extends SwingWorker<Void, Void>
                     afRanges = formatRanges(queries, "%.2f");
                 }
 
-                message = "Retrieving FLKC Load ranges...";
+                message = rb.getString("GETKNOCKRANGES");
                 messageListener.reportMessage(message);
                 String[] flkcLoad = new String[0];
                 queries.clear();
@@ -190,7 +220,7 @@ public final class SSMLearningTableValues extends SwingWorker<Void, Void>
                     flkcLoad = formatRanges(queries, "%.2f");
                 }
 
-                message = "Retrieving FLKC RPM ranges...";
+                message = rb.getString("GETRPMRANGES");
                 messageListener.reportMessage(message);
                 String[] flkcRpm = new String[0];
                 queries.clear();
@@ -220,7 +250,7 @@ public final class SSMLearningTableValues extends SwingWorker<Void, Void>
                                 queries.add(flkcQueryGroups.get(i).get(j));
                             }
                         }
-                        message = String.format("Retrieving FLKC row %d values...", i);
+                        message = MessageFormat.format(rb.getString("GETKNOCKROW"), i);
                         messageListener.reportMessage(message);
                         LOGGER.info(message);
                         connection.sendAddressReads(
@@ -231,13 +261,12 @@ public final class SSMLearningTableValues extends SwingWorker<Void, Void>
                     }
                 }
                 else {
-                    message = String.format("Error retrieving FLKC data values, missing FLKC reference");
+                    message = rb.getString("ERRTABLEKNOCK");
                     messageListener.reportMessage(message);
                     LOGGER.error(message);
                 }
 
-                messageListener.reportMessage(
-                        "Learning Table Values retrieved successfully.");
+                messageListener.reportMessage(rb.getString("LTVSUCCESS"));
                 final SSMLearningTableValuesResultsPanel results =
                         new SSMLearningTableValuesResultsPanel(
                                 logger, vehicleInfo,
@@ -253,17 +282,12 @@ public final class SSMLearningTableValues extends SwingWorker<Void, Void>
             }
         }
         catch (Exception e) {
-            messageListener.reportError(
-                    "Unable to retrieve current ECU learning values");
+            messageListener.reportError(rb.getString("ERRLTV"));
             LOGGER.error(message + " Error retrieving values", e);
             showMessageDialog(logger,
-                    message +
-                    "\nError performing Learning Table Values read.\n" +
-                    "Check the following:\n" +
-                    "* Logger has successfully conencted to the ECU\n" +
-                    "* Correct COM port is selected (if not Openport 2)\n" +
-                    "* Cable is connected properly\n* Ignition is ON\n",
-                    "Learning Table Values",
+                    MessageFormat.format(
+                            rb.getString("ERRCONNECT"), message),
+                    rb.getString("LTV"),
                     ERROR_MESSAGE);
         }
         return null;
@@ -547,5 +571,50 @@ public final class SSMLearningTableValues extends SwingWorker<Void, Void>
                 return module;
         }
         return null;
+    }
+    /**
+     * Load ECU def table names from a user customized properties file.
+     * The file will replace the Class defined names if it is present.
+     * Names in the file should be separated by the : character
+     * @exception    FileNotFoundException if the directory or file is not present
+     * @exception    IOException if there's some kind of IO error
+     */
+    private void loadProperties() {
+        final Properties learning = new Properties();
+        FileInputStream propFile;
+        try {
+            propFile = new FileInputStream("./customize/ssmlearning.properties");
+            learning.load(propFile);
+            final String af_table_names =
+                    learning.getProperty("af_table_names");
+            String[] names = af_table_names.split(":", 0);
+            AF_TABLE_NAMES = new ArrayList<String>();
+            for (String name : names) {
+                if (ParamChecker.isNullOrEmpty(name)) continue;
+                AF_TABLE_NAMES.add(name);
+            }
+            final String flkc_table_column_names =
+                    learning.getProperty("flkc_table_column_names");
+            names = flkc_table_column_names.split(":", 0);
+            FLKC_LOAD_TABLE_NAMES = new ArrayList<String>();
+            for (String name : names) {
+                if (ParamChecker.isNullOrEmpty(name)) continue;
+                FLKC_LOAD_TABLE_NAMES.add(name);
+            }
+            final String flkc_table_row_names =
+                    learning.getProperty("flkc_table_row_names");
+            names = flkc_table_row_names.split(":", 0);
+            FLKC_RPM_TABLE_NAMES = new ArrayList<String>();
+            for (String name : names) {
+                if (ParamChecker.isNullOrEmpty(name)) continue;
+                FLKC_RPM_TABLE_NAMES.add(name);
+            }
+            propFile.close();
+            LOGGER.info("SSMLearningTableValues loaded table names from file: ./customize/ssmlearning.properties");
+        } catch (FileNotFoundException e) {
+            LOGGER.error("SSMLearningTableValues properties file: " + e.getLocalizedMessage());
+        } catch (IOException e) {
+            LOGGER.error("SSMLearningTableValues IOException: " + e.getLocalizedMessage());
+        }
     }
 }

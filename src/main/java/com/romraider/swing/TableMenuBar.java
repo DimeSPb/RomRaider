@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2012 RomRaider.com
+ * Copyright (C) 2006-2020 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,9 @@
 
 package com.romraider.swing;
 
+import java.text.MessageFormat;
+import java.util.ResourceBundle;
+
 import javax.swing.ButtonGroup;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -26,40 +29,43 @@ import javax.swing.JMenuItem;
 import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JSeparator;
 
-import com.romraider.Settings;
+import com.romraider.maps.Table;
 import com.romraider.maps.Table3D;
+import com.romraider.util.ResourceUtil;
 
 public class TableMenuBar extends JMenuBar {
 
     private static final long serialVersionUID = -695692646459410510L;
-    private JMenu fileMenu;
-    private JMenuItem graph;
+    private static final ResourceBundle rb = new ResourceUtil().getBundle(
+            TableMenuBar.class.getName());
+    private JMenu fileMenu = new JMenu(rb.getString("TABLE"));
+    private JMenuItem graph = new JMenuItem(rb.getString("VIEWGRAPH"));
 
-    private JMenu compareMenu;
-    private JRadioButtonMenuItem compareOriginal;
-    private JRadioButtonMenuItem compareMap;
-    private JMenu similarOpenTables;
-    private JRadioButtonMenuItem compareOff;
-    private JMenu compareDisplay;
-    private JRadioButtonMenuItem comparePercent;
-    private JRadioButtonMenuItem compareAbsolute;
-    private JMenu compareToValue;
-    private JRadioButtonMenuItem compareToOriginal;
-    private JRadioButtonMenuItem compareToBin;
+    private JMenu compareMenu = new JMenu(rb.getString("COMPARE"));
+    private JRadioButtonMenuItem compareOriginal = new JRadioButtonMenuItem(rb.getString("SHOWCHNG"));
+    private JRadioButtonMenuItem compareMap = new JRadioButtonMenuItem(rb.getString("COMPAREMAP"));
+    private JMenu similarOpenTables = new JMenu(rb.getString("COMPARETBL"));
+    private JRadioButtonMenuItem compareOff = new JRadioButtonMenuItem(rb.getString("OFF"));
+    private JMenu compareDisplay = new JMenu(rb.getString("DISPLAY"));
+    private JRadioButtonMenuItem comparePercent = new JRadioButtonMenuItem(rb.getString("PERDIFF"));
+    private JRadioButtonMenuItem compareAbsolute = new JRadioButtonMenuItem(rb.getString("ABSDIFF"));
+    private JMenu compareToValue = new JMenu(rb.getString("COMAPRETO"));
+    private JRadioButtonMenuItem compareToOriginal = new JRadioButtonMenuItem(rb.getString("COMPARETOOV"));
+    private JRadioButtonMenuItem compareToBin = new JRadioButtonMenuItem(rb.getString("COMPARETOBV"));
 
     private JMenuItem close;
-    private JMenu editMenu;
-    private JMenuItem undoSel;
-    private JMenuItem undoAll;
-    private JMenuItem revert;
-    private JMenuItem copySel;
-    private JMenuItem copyTable;
-    private JMenuItem paste;
-    private JMenuItem interp;
-    private JMenuItem vertInterp;
-    private JMenuItem horizInterp;
-    private JMenu viewMenu;
-    private JMenuItem tableProperties;
+    private JMenu editMenu = new JMenu(rb.getString("EDIT"));
+    private JMenuItem undoSel = new JMenuItem(rb.getString("UNDOCHNGS"));
+    private JMenuItem undoAll = new JMenuItem(rb.getString("UNDOALL"));
+    private JMenuItem revert = new JMenuItem(rb.getString("SETREVERT"));
+    private JMenuItem copySel = new JMenuItem(rb.getString("COPYSEL"));
+    private JMenuItem copyTable = new JMenuItem(rb.getString("COPYTBL"));
+    private JMenuItem paste = new JMenuItem(rb.getString("PASTE"));
+    private JMenuItem interp = new JMenuItem(rb.getString("INTERP"));
+    private JMenuItem vertInterp = new JMenuItem(rb.getString("VINTERP"));
+    private JMenuItem horizInterp = new JMenuItem(rb.getString("HINTERP"));
+    private JMenu viewMenu = new JMenu(rb.getString("VIEW"));
+    private JMenuItem tableProperties = new JMenuItem(rb.getString("TBLPROP"));
 
     private ButtonGroup compareGroup;
     private ButtonGroup compareDisplayGroup;
@@ -73,13 +79,11 @@ public class TableMenuBar extends JMenuBar {
     }
 
     private void initFileMenu(TableFrame frame) {
-        fileMenu = new JMenu("Table");
-        graph = new JMenuItem("View Graph");
-        compareMenu = new JMenu("Compare");
-        setClose(new JMenuItem("Close Table"));
+        close = new JMenuItem(rb.getString("CLOSETBL"));
 
         initCompareMenu(frame);
-        getClose().setText("Close " + frame.getTable().getName());
+        getClose().setText(MessageFormat.format(
+                rb.getString("CLOSEFRM"), frame.getTable().getName()));
 
         graph.addActionListener(frame);
         getClose().addActionListener(frame);
@@ -97,17 +101,6 @@ public class TableMenuBar extends JMenuBar {
     }
 
     private void initEditMenu(TableFrame frame) {
-        editMenu = new JMenu("Edit");
-        setUndoSel(new JMenuItem("Undo Selected Changes"));
-        setUndoAll(new JMenuItem("Undo All Changes"));
-        setRevert(new JMenuItem("Set Revert Point"));
-        setCopySel(new JMenuItem("Copy Selection"));
-        setCopyTable(new JMenuItem("Copy Table"));
-        setPaste(new JMenuItem("Paste"));
-        setVertInterp(new JMenuItem("Vertical Interpolate"));
-        setHorizInterp(new JMenuItem("Horizontal Interpolate"));
-        setInterp(new JMenuItem("Interpolate"));
-
         editMenu.add(getUndoSel());
         editMenu.add(getUndoAll());
         editMenu.add(getRevert());
@@ -147,12 +140,9 @@ public class TableMenuBar extends JMenuBar {
     }
 
     private void initViewMenu(TableFrame frame) {
-
-        viewMenu = new JMenu("View");
         viewMenu.setMnemonic('V');
 
-        setTableProperties(new JMenuItem("Table Properties"));
-        getTableProperties().setToolTipText("Select to view the table properties.");
+        getTableProperties().setToolTipText(rb.getString("TBLPROPTT"));
         getTableProperties().setMnemonic('P');
         getTableProperties().addActionListener(frame);
 
@@ -165,32 +155,21 @@ public class TableMenuBar extends JMenuBar {
     }
 
     private void initCompareMenu(TableFrame frame) {
-        setCompareOriginal(new JRadioButtonMenuItem("Show Changes"));
-        getCompareOriginal().setToolTipText("Compares the current values to the original or revert point values.");
-        setCompareMap(new JRadioButtonMenuItem("Compare to Another Map"));
-        getCompareMap().setToolTipText("Compares this table and a selected table.");
-        setSimilarOpenTables(new JMenu("Compare to Table"));
-        getSimilarOpenTables().setToolTipText("Compares this table to a similar table.");
+        getCompareOriginal().setToolTipText(rb.getString("COMPARETT"));
+        getCompareMap().setToolTipText(rb.getString("COMPARETBLTT"));
+        getSimilarOpenTables().setToolTipText(rb.getString("COMPARESIMTT"));
 
-        setCompareOff(new JRadioButtonMenuItem("Off"));
-
-        setComparePercent(new JRadioButtonMenuItem("Percent Difference"));
-        setCompareAbsolute(new JRadioButtonMenuItem("Absolute Difference"));
         compareDisplayGroup = new ButtonGroup();
         compareDisplayGroup.add(getComparePercent());
         compareDisplayGroup.add(getCompareAbsolute());
-        compareDisplay = new JMenu("Display");
         compareDisplay.add(getComparePercent());
         compareDisplay.add(getCompareAbsolute());
 
-        setCompareToOriginal(new JRadioButtonMenuItem("Compare to Original Value"));
-        getCompareToOriginal().setToolTipText("Compares this table to the selected table's original or revert point values.");
-        setCompareToBin(new JRadioButtonMenuItem("Compare to Bin Value"));
-        getCompareToBin().setToolTipText("Compares this table to the selected table's current values.");
+        getCompareToOriginal().setToolTipText(rb.getString("COMPARETHIS"));
+        getCompareToBin().setToolTipText(rb.getString("COMPARECURRENT"));
         compareToGroup = new ButtonGroup();
         compareToGroup.add(getCompareToOriginal());
         compareToGroup.add(getCompareToBin());
-        compareToValue = new JMenu("Compare to");
         compareToValue.add(getCompareToOriginal());
         compareToValue.add(getCompareToBin());
 
@@ -244,7 +223,7 @@ public class TableMenuBar extends JMenuBar {
 
     private void applyTableTypeRules(TableFrame frame) {
         // Hide items that don't work with a DTC tables.
-        if(frame.getTable().getType() == Settings.TABLE_SWITCH) {
+        if(frame.getTable().getType() == Table.TableType.SWITCH) {
             editMenu.setEnabled(false);
             getCompareOriginal().setEnabled(false);
             getComparePercent().setEnabled(false);
@@ -258,150 +237,76 @@ public class TableMenuBar extends JMenuBar {
         return undoAll;
     }
 
-    public void setUndoAll(JMenuItem undoAll) {
-        this.undoAll = undoAll;
-    }
-
     public JMenuItem getRevert() {
         return revert;
-    }
-
-    public void setRevert(JMenuItem revert) {
-        this.revert = revert;
     }
 
     public JMenuItem getUndoSel() {
         return undoSel;
     }
 
-    public void setUndoSel(JMenuItem undoSel) {
-        this.undoSel = undoSel;
-    }
-
     public JMenuItem getClose() {
         return close;
     }
 
-    public void setClose(JMenuItem close) {
-        this.close = close;
-    }
-
     public JMenuItem getTableProperties() {
         return tableProperties;
-    }
-    public void setTableProperties(JMenuItem tableProperties) {
-        this.tableProperties = tableProperties;
     }
 
     public JMenuItem getCopySel() {
         return copySel;
     }
 
-    public void setCopySel(JMenuItem copySel) {
-        this.copySel = copySel;
-    }
-
     public JMenuItem getCopyTable() {
         return copyTable;
-    }
-
-    public void setCopyTable(JMenuItem copyTable) {
-        this.copyTable = copyTable;
     }
 
     public JMenuItem getPaste() {
         return paste;
     }
 
-    public void setPaste(JMenuItem paste) {
-        this.paste = paste;
-    }
-
     public JRadioButtonMenuItem getCompareOff() {
         return compareOff;
-    }
-
-    public void setCompareOff(JRadioButtonMenuItem compareOff) {
-        this.compareOff = compareOff;
     }
 
     public JRadioButtonMenuItem getCompareAbsolute() {
         return compareAbsolute;
     }
 
-    public void setCompareAbsolute(JRadioButtonMenuItem compareAbsolute) {
-        this.compareAbsolute = compareAbsolute;
-    }
-
     public JRadioButtonMenuItem getComparePercent() {
         return comparePercent;
-    }
-
-    public void setComparePercent(JRadioButtonMenuItem comparePercent) {
-        this.comparePercent = comparePercent;
     }
 
     public JRadioButtonMenuItem getCompareOriginal() {
         return compareOriginal;
     }
 
-    public void setCompareOriginal(JRadioButtonMenuItem compareOriginal) {
-        this.compareOriginal = compareOriginal;
-    }
-
     public JRadioButtonMenuItem getCompareToOriginal() {
         return compareToOriginal;
-    }
-
-    public void setCompareToOriginal(JRadioButtonMenuItem compareToOriginal) {
-        this.compareToOriginal = compareToOriginal;
     }
 
     public JRadioButtonMenuItem getCompareMap() {
         return compareMap;
     }
 
-    public void setCompareMap(JRadioButtonMenuItem compareMap) {
-        this.compareMap = compareMap;
-    }
-
     public JRadioButtonMenuItem getCompareToBin() {
         return compareToBin;
-    }
-
-    public void setCompareToBin(JRadioButtonMenuItem compareToBin) {
-        this.compareToBin = compareToBin;
     }
 
     public JMenu getSimilarOpenTables() {
         return similarOpenTables;
     }
 
-    public void setSimilarOpenTables(JMenu similarOpenTables) {
-        this.similarOpenTables = similarOpenTables;
-    }
-
     public JMenuItem getInterp() {
         return interp;
-    }
-
-    public void setInterp(JMenuItem interp) {
-        this.interp = interp;
     }
 
     public JMenuItem getHorizInterp() {
         return this.horizInterp;
     }
 
-    public void setHorizInterp(JMenuItem horizInterp) {
-        this.horizInterp = horizInterp;
-    }
-
     public JMenuItem getVertInterp() {
         return this.vertInterp;
     }
 
-    public void setVertInterp(JMenuItem vertInterp) {
-        this.vertInterp = vertInterp;
-    }
 }

@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2015 RomRaider.com
+ * Copyright (C) 2006-2019 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,11 +28,13 @@ import static java.lang.System.currentTimeMillis;
 import static java.util.Collections.synchronizedList;
 import static java.util.Collections.synchronizedMap;
 
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ResourceBundle;
 
 import javax.swing.SwingUtilities;
 
@@ -56,10 +58,13 @@ import com.romraider.logger.ecu.ui.MessageListener;
 import com.romraider.logger.ecu.ui.StatusChangeListener;
 import com.romraider.logger.ecu.ui.handler.DataUpdateHandler;
 import com.romraider.logger.ecu.ui.handler.file.FileLoggerControllerSwitchMonitor;
+import com.romraider.util.ResourceUtil;
 import com.romraider.util.SettingsManager;
 
 public final class QueryManagerImpl implements QueryManager {
     private static final Logger LOGGER = Logger.getLogger(QueryManagerImpl.class);
+    private static final ResourceBundle rb = new ResourceUtil().getBundle(
+            QueryManagerImpl.class.getName());
     private final List<StatusChangeListener> listeners =
             synchronizedList(new ArrayList<StatusChangeListener>());
     private final Map<String, Query> queryMap =
@@ -162,7 +167,7 @@ public final class QueryManagerImpl implements QueryManager {
             messageListener.reportError(e);
         } finally {
             notifyStopped();
-            messageListener.reportMessage("Disconnected.");
+            messageListener.reportMessage(rb.getString("DISCONNECTED"));
             LOGGER.debug("QueryManager stopped.");
         }
     }
@@ -174,16 +179,18 @@ public final class QueryManagerImpl implements QueryManager {
                             settings.getLoggerPort(),
                             settings.getLoggerConnectionProperties());
             try {
-                messageListener.reportMessage("Sending " + module.getName() + " Init...");
+                messageListener.reportMessage(MessageFormat.format(
+                        rb.getString("SENDINIT"), module.getName()));
                 connection.ecuInit(ecuInitCallback, module);
-                messageListener.reportMessage("Sending " + module.getName() + " Init...done.");
+                messageListener.reportMessage(MessageFormat.format(
+                        rb.getString("INITDONE"), module.getName()));
                 return true;
             } finally {
                 connection.close();
             }
         } catch (Exception e) {
-            messageListener.reportMessage("Unable to send " + module.getName() +
-                    " init - check cable is connected and ignition is on.");
+            messageListener.reportMessage(MessageFormat.format(
+                    rb.getString("INITFAIL"), module.getName()));
             logError(e);
             return false;
         }
@@ -217,13 +224,13 @@ public final class QueryManagerImpl implements QueryManager {
                 updateQueryList();
                 if (queryMap.isEmpty()) {
                     if (pollState.isLastQuery() &&
-                            pollState.getCurrentState() == 0) {
+                            pollState.getCurrentState() == PollingState.State.STATE_0) {
                         endEcuQueries(txManager);
-                        pollState.setLastState(0);
+                        pollState.setLastState(PollingState.State.STATE_0);
                     }
                     start = System.currentTimeMillis();
                     count = 0;
-                    messageListener.reportMessage("Select parameters to be logged...");
+                    messageListener.reportMessage(rb.getString("SELECTPARAMS"));
                     sleep(1000L);
                 } else {
                     end = currentTimeMillis() + 1L; // update once every 1msec
@@ -237,40 +244,40 @@ public final class QueryManagerImpl implements QueryManager {
                                 endEcuQueries(txManager);
                             }
                             if (pollState.isFastPoll()) {
-                                if (pollState.getCurrentState() == 0 &&
+                                if (pollState.getCurrentState() == PollingState.State.STATE_0 &&
                                         pollState.isNewQuery()) {
-                                    pollState.setCurrentState(1);
+                                    pollState.setCurrentState(PollingState.State.STATE_1);
                                     pollState.setNewQuery(false);
                                 }
-                                if (pollState.getCurrentState() == 0 &&
+                                if (pollState.getCurrentState() == PollingState.State.STATE_0 &&
                                         !pollState.isNewQuery()) {
-                                    pollState.setCurrentState(1);
+                                    pollState.setCurrentState(PollingState.State.STATE_1);
                                 }
-                                if (pollState.getCurrentState() == 1 &&
+                                if (pollState.getCurrentState() == PollingState.State.STATE_1 &&
                                         pollState.isNewQuery()) {
-                                    pollState.setCurrentState(0);
-                                    pollState.setLastState(1);
+                                    pollState.setCurrentState(PollingState.State.STATE_0);
+                                    pollState.setLastState(PollingState.State.STATE_1);
                                     pollState.setNewQuery(false);
                                 }
-                                if (pollState.getCurrentState() == 1 &&
+                                if (pollState.getCurrentState() == PollingState.State.STATE_1 &&
                                         !pollState.isNewQuery()) {
-                                    pollState.setLastState(1);
+                                    pollState.setLastState(PollingState.State.STATE_1);
                                 }
                                 pollState.setLastQuery(true);
                             }
                             else {
-                                pollState.setCurrentState(0);
-                                pollState.setLastState(0);
+                                pollState.setCurrentState(PollingState.State.STATE_0);
+                                pollState.setLastState(PollingState.State.STATE_0);
                                 pollState.setNewQuery(false);
                             }
                             lastPollState = pollState.isFastPoll();
                         }
                         else {
                             if (pollState.isLastQuery() &&
-                                    pollState.getLastState() == 1) {
+                                    pollState.getLastState() == PollingState.State.STATE_1) {
                                 endEcuQueries(txManager);
-                                pollState.setLastState(0);
-                                pollState.setCurrentState(0);
+                                pollState.setLastState(PollingState.State.STATE_0);
+                                pollState.setCurrentState(PollingState.State.STATE_0);
                                 pollState.setNewQuery(true);
                             }
                         }
@@ -282,7 +289,8 @@ public final class QueryManagerImpl implements QueryManager {
                     }
                     handleQueryResponse();
                     count++;
-                    messageListener.reportMessage("Querying " + moduleName + "...");
+                    messageListener.reportMessage(MessageFormat.format(
+                            rb.getString("QUERYING"), moduleName));
                     messageListener.reportStats(buildStatsMessage(start, count));
                 }
             }
@@ -290,7 +298,7 @@ public final class QueryManagerImpl implements QueryManager {
             messageListener.reportError(e);
         } finally {
             txManager.stop();
-            pollState.setCurrentState(0);
+            pollState.setCurrentState(PollingState.State.STATE_0);
             pollState.setNewQuery(true);
         }
     }
@@ -391,19 +399,23 @@ public final class QueryManagerImpl implements QueryManager {
     }
 
     private String buildStatsMessage(long start, int count) {
-        String state = String.format("%s Slow-K:",settings.getLoggerProtocol());
+        String state = MessageFormat.format(
+                    rb.getString("SLOWK"), settings.getLoggerProtocol());
         if (pollState.isFastPoll()) {
-            state = String.format("%s Fast-K:",settings.getLoggerProtocol());
+            state = MessageFormat.format(
+                    rb.getString("FASTK"), settings.getLoggerProtocol());
         }
         if (settings.getTransportProtocol().equals("ISO15765")) {
-            state = String.format("%s CAN bus:",settings.getLoggerProtocol());
+            state = MessageFormat.format(
+                    rb.getString("CANBUS"), settings.getLoggerProtocol());
         }
         if (settings.isLogExternalsOnly()) {
-            state = "Externals:";
+            state = MessageFormat.format(
+                    rb.getString("EXTERNALS"), settings.getLoggerProtocol());
         }
         double duration = (System.currentTimeMillis() - start) / 1000.0;
-        String result = String.format(
-                "%s[ %.2f queries/sec, %.2f sec/query ]",
+        String result = MessageFormat.format(
+                rb.getString("QUERYSTATS"),
                 state,
                 (count) / duration,
                 duration / (count)

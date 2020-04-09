@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2014 RomRaider.com
+ * Copyright (C) 2006-2020 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Map;
+import java.util.ResourceBundle;
 import java.util.Vector;
 
 import javax.imageio.metadata.IIOMetadataNode;
@@ -31,36 +32,39 @@ import javax.imageio.metadata.IIOMetadataNode;
 import com.romraider.Settings;
 import com.romraider.logger.external.phidget.interfacekit.io.IntfKitSensor;
 import com.romraider.swing.JProgressPane;
+import com.romraider.util.ResourceUtil;
 import com.sun.org.apache.xml.internal.serialize.OutputFormat;
 import com.sun.org.apache.xml.internal.serialize.XMLSerializer;
 
 public final class DOMSettingsBuilder {
+    private static final ResourceBundle rb = new ResourceUtil().getBundle(
+            DOMSettingsBuilder.class.getName());
 
     public void buildSettings(Settings settings, File output, JProgressPane progress, String versionNumber) throws IOException {
 
         IIOMetadataNode settingsNode = new IIOMetadataNode("settings");
 
         // create settings
-        progress.update("Saving window settings...", 15);
+        progress.update(rb.getString("SAVEWIN"), 15);
         settingsNode.appendChild(buildWindow(settings));
-        progress.update("Saving file settings...", 30);
+        progress.update(rb.getString("SAVEFILE"), 30);
         settingsNode.appendChild(buildFiles(settings));
-        progress.update("Saving options...", 45);
+        progress.update(rb.getString("SAVEOPTN"), 45);
         settingsNode.appendChild(buildOptions(settings, versionNumber));
-        progress.update("Saving display settings...", 60);
+        progress.update(rb.getString("SAVEDISP"), 60);
         settingsNode.appendChild(buildTableDisplay(settings));
-        progress.update("Saving logger settings...", 75);
+        progress.update(rb.getString("SAVELOGR"), 75);
         settingsNode.appendChild(buildLogger(settings));
-        progress.update("Saving table clipboard format settings...", 80);
+        progress.update(rb.getString("SAVECLIP"), 80);
         settingsNode.appendChild(buildTableClipboardFormat(settings));
-        progress.update("Saving icon scale settings...", 85);
+        progress.update(rb.getString("SAVEICON"), 85);
         settingsNode.appendChild(buildIcons(settings));
 
         OutputFormat of = new OutputFormat("XML", "ISO-8859-1", true);
         of.setIndent(1);
         of.setIndenting(true);
 
-        progress.update("Writing to file...", 90);
+        progress.update(rb.getString("WTOF"), 90);
 
         FileOutputStream fos = new FileOutputStream(output);
         try {
@@ -277,6 +281,18 @@ public final class DOMSettingsBuilder {
         warning.setAttribute("g", String.valueOf(settings.getWarningColor().getGreen()));
         warning.setAttribute("b", String.valueOf(settings.getWarningColor().getBlue()));
         colors.appendChild(warning);
+        // live cells visited
+        IIOMetadataNode oldlive = new IIOMetadataNode("livevalue");
+        oldlive.setAttribute("r", String.valueOf(settings.getliveValueColor().getRed()));
+        oldlive.setAttribute("g", String.valueOf(settings.getliveValueColor().getGreen()));
+        oldlive.setAttribute("b", String.valueOf(settings.getliveValueColor().getBlue()));
+        colors.appendChild(oldlive);
+        // current live cell
+        IIOMetadataNode curlive = new IIOMetadataNode("curlivevalue");
+        curlive.setAttribute("r", String.valueOf(settings.getCurLiveValueColor().getRed()));
+        curlive.setAttribute("g", String.valueOf(settings.getCurLiveValueColor().getGreen()));
+        curlive.setAttribute("b", String.valueOf(settings.getCurLiveValueColor().getBlue()));
+        colors.appendChild(curlive);
 
         tableDisplay.appendChild(colors);
 
@@ -379,6 +395,19 @@ public final class DOMSettingsBuilder {
             }
             loggerSettings.appendChild(plugins);
         }
+
+        // Dashboard Gauge Index
+        IIOMetadataNode gaugeindex = new IIOMetadataNode("gauge");
+        gaugeindex.setAttribute("index", String.valueOf(((int) settings.getLoggerSelectedGaugeIndex())));
+        loggerSettings.appendChild(gaugeindex);
+
+        // Dyno tab settings
+        IIOMetadataNode dyno = new IIOMetadataNode("dyno");
+        dyno.setAttribute("car", settings.getSelectedCar());
+        dyno.setAttribute("gear", settings.getSelectedGear());
+        dyno.setAttribute("threshold", settings.getDynoThreshold());
+        dyno.setAttribute("units", settings.getDynoThrottle());
+        loggerSettings.appendChild(dyno);
 
         return loggerSettings;
     }

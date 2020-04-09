@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2012 RomRaider.com
+ * Copyright (C) 2006-2020 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,13 +19,20 @@
 
 package com.romraider.swing;
 
+import java.util.ResourceBundle;
+
 import com.romraider.maps.Rom;
+import com.romraider.util.ResourceUtil;
 
 import javax.swing.*;
+import javax.swing.GroupLayout.Alignment;
+import javax.swing.LayoutStyle.ComponentPlacement;
 
 public class RomPropertyPanel extends javax.swing.JPanel {
 
     private static final long serialVersionUID = 5583360728106071942L;
+    private static final ResourceBundle rb = new ResourceUtil().getBundle(
+            RomPropertyPanel.class.getName());
     Rom rom = new Rom();
 
     public RomPropertyPanel(Rom rom) {
@@ -35,7 +42,12 @@ public class RomPropertyPanel extends javax.swing.JPanel {
         fileName.setText(rom.getFileName());
         xmlID.setText(rom.getRomID().getXmlid());
         ecuVersion.setText(rom.getRomID().getCaseId());
-        fileSize.setText((rom.getRealFileSize() / 1024) + "kb");
+        if (rom.getRealFileSize() > 1024) {
+            fileSize.setText((rom.getRealFileSize() / 1024) + "kB");
+        }
+        else {
+            fileSize.setText(rom.getRealFileSize() + "B");
+        }
         internalID.setText(rom.getRomID().getInternalIdString());
         storageAddress.setText("0x" + Integer.toHexString(rom.getRomID().getInternalIdAddress()));
 
@@ -46,6 +58,7 @@ public class RomPropertyPanel extends javax.swing.JPanel {
         submodel.setText(rom.getRomID().getSubModel());
         transmission.setText(rom.getRomID().getTransmission());
         editStamp.setText(rom.getRomID().getEditStamp());
+        checksum.setText(rom.getRomID().getChecksum());
 
         tableList.setListData(rom.getTables());
     }
@@ -81,46 +94,52 @@ public class RomPropertyPanel extends javax.swing.JPanel {
         lblTables = new javax.swing.JLabel();
         lblEditStamp = new javax.swing.JLabel();
         editStamp = new javax.swing.JLabel();
+        lblChecksum = new javax.swing.JLabel();
+        checksum = new javax.swing.JLabel();
 
-        lblEditStamp.setText("Edit Stamp:");
+        lblChecksum.setText(rb.getString("LBLCHKSUM"));
+
+        checksum.setText("subaru");
+
+        lblEditStamp.setText(rb.getString("LBLEDIT"));
         
         editStamp.setText("stamp");
         
-        lblFilename.setText("Filename:");
+        lblFilename.setText(rb.getString("LBLFN"));
 
         fileName.setText("Filename");
 
-        lblECURevision.setText("ECU Revision:");
+        lblECURevision.setText(rb.getString("LBLECU"));
 
         xmlID.setText("XMLID");
 
-        lblFilesize.setText("Filesize:");
+        lblFilesize.setText(rb.getString("LBLFS"));
 
         fileSize.setText("999kb");
 
-        lblEcuVersion.setText("ECU Version:");
+        lblEcuVersion.setText(rb.getString("LBLVER"));
 
         ecuVersion.setText("ECUVER");
 
-        lblInternalId.setText("Internal ID:");
+        lblInternalId.setText(rb.getString("LBLID"));
 
         internalID.setText("INTERNAL");
 
-        lblStorageAddress.setText("ID Storage Address:");
+        lblStorageAddress.setText(rb.getString("LBLADDR"));
 
         storageAddress.setText("0x00");
 
-        lblMake.setText("Make:");
+        lblMake.setText(rb.getString("LBLMAKE"));
 
-        lblMarket.setText("Market:");
+        lblMarket.setText(rb.getString("LBLMRKT"));
 
-        lblTransmission.setText("Transmission:");
+        lblTransmission.setText(rb.getString("LBLTRANS"));
 
-        lblModel.setText("Model:");
+        lblModel.setText(rb.getString("LBLMDL"));
 
-        lblSubmodel.setText("Submodel:");
+        lblSubmodel.setText(rb.getString("LBLSMDL"));
 
-        lblYear.setText("Year:");
+        lblYear.setText(rb.getString("LBLYR"));
 
         make.setText("Make");
 
@@ -151,125 +170,118 @@ public class RomPropertyPanel extends javax.swing.JPanel {
         });
         jScrollPane1.setViewportView(tableList);
 
-        lblTables.setText("Tables:");
+        lblTables.setText(rb.getString("LBLTBLS"));
 
         GroupLayout layout = new GroupLayout(this);
-        this.setLayout(layout);
         layout.setHorizontalGroup(
-                layout.createParallelGroup(GroupLayout.Alignment.LEADING)
+            layout.createParallelGroup(Alignment.LEADING)
+                .addGroup(layout.createSequentialGroup()
+                    .addContainerGap()
+                    .addGroup(layout.createParallelGroup(Alignment.LEADING)
                         .addGroup(layout.createSequentialGroup()
-                                .addContainerGap()
-                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-                                        .addGroup(layout.createSequentialGroup()
-                                                .addComponent(lblFilename)
-                                                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
-                                                .addComponent(fileName, GroupLayout.PREFERRED_SIZE, 302, GroupLayout.PREFERRED_SIZE))
-                                        .addGroup(layout.createSequentialGroup()
-                                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-                                                        .addGroup(layout.createSequentialGroup()
-                                                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-                                                                        .addComponent(lblECURevision)
-                                                                        .addComponent(lblEcuVersion)
-                                                                        .addComponent(lblFilesize))
-                                                                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
-                                                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-                                                                        .addComponent(fileSize)
-                                                                        .addComponent(ecuVersion)
-                                                                        .addComponent(xmlID)))
-                                                        .addGroup(layout.createSequentialGroup()
-                                                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-                                                                        .addComponent(lblYear)
-                                                                        .addComponent(lblModel)
-                                                                        .addComponent(lblSubmodel)
-                                                                        .addComponent(lblTransmission)
-                                                                        .addComponent(lblMarket)
-                                                                        .addComponent(lblMake))
-                                                                .addGap(7, 7, 7)
-                                                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-                                                                        .addComponent(make)
-                                                                        .addComponent(market)
-                                                                        .addComponent(year)
-                                                                        .addGroup(layout.createSequentialGroup()
-                                                                                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
-                                                                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-                                                                                        .addComponent(transmission)
-                                                                                        .addComponent(submodel)))
-                                                                        .addComponent(model))))
-                                                .addGap(32, 32, 32)
-                                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-                                                        .addGroup(layout.createSequentialGroup()
-                                                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-                                                                        .addComponent(lblInternalId)
-                                                                        .addComponent(lblStorageAddress)
-                                                                        .addComponent(lblEditStamp))
-                                                                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED, 53, Short.MAX_VALUE)
-                                                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-                                                                        .addComponent(internalID)
-                                                                        .addComponent(storageAddress)
-                                                                        .addComponent(editStamp))
-                                                                .addGap(36, 36, 36))
-                                                        .addComponent(lblTables)
-                                                        .addComponent(jScrollPane1, GroupLayout.PREFERRED_SIZE, 226, GroupLayout.PREFERRED_SIZE))))
-                                .addContainerGap())
+                            .addComponent(lblFilename)
+                            .addPreferredGap(ComponentPlacement.RELATED)
+                            .addComponent(fileName, GroupLayout.PREFERRED_SIZE, 302, GroupLayout.PREFERRED_SIZE))
+                        .addGroup(layout.createSequentialGroup()
+                            .addGroup(layout.createParallelGroup(Alignment.LEADING)
+                                .addComponent(lblECURevision)
+                                .addComponent(lblEcuVersion)
+                                .addComponent(lblFilesize)
+                                .addComponent(lblChecksum)
+                                .addComponent(lblMake)
+                                .addComponent(lblMarket)
+                                .addComponent(lblYear)
+                                .addComponent(lblModel)
+                                .addComponent(lblSubmodel)
+                                .addComponent(lblTransmission))
+                            .addPreferredGap(ComponentPlacement.RELATED)
+                            .addGroup(layout.createParallelGroup(Alignment.LEADING)
+                                .addComponent(transmission)
+                                .addComponent(submodel)
+                                .addComponent(model)
+                                .addComponent(year)
+                                .addComponent(market)
+                                .addComponent(make)
+                                .addComponent(checksum, GroupLayout.PREFERRED_SIZE, 70, GroupLayout.PREFERRED_SIZE)
+                                .addComponent(fileSize)
+                                .addComponent(ecuVersion)
+                                .addComponent(xmlID))
+                            .addGap(20)
+                            .addGroup(layout.createParallelGroup(Alignment.LEADING)
+                                .addComponent(lblTables)
+                                .addComponent(lblEditStamp)
+                                .addComponent(lblStorageAddress)
+                                .addComponent(lblInternalId))
+                            .addGap(18)
+                            .addGroup(layout.createParallelGroup(Alignment.LEADING)
+                                .addComponent(editStamp)
+                                .addComponent(storageAddress)
+                                .addComponent(internalID)))
+                        .addGroup(layout.createSequentialGroup()
+                            .addGap(163)
+                            .addComponent(jScrollPane1, GroupLayout.PREFERRED_SIZE, 226, GroupLayout.PREFERRED_SIZE)))
+                    .addContainerGap(51, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
-                layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-                        .addGroup(GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                                .addGap(21, 21, 21)
-                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-                                        .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                                                .addComponent(lblFilename)
-                                                .addComponent(fileName))
-                                        .addGroup(layout.createSequentialGroup()
-                                                .addGap(40, 40, 40)
-                                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                                                        .addComponent(lblECURevision)
-                                                        .addComponent(xmlID)
-                                                        .addComponent(lblInternalId)
-                                                        .addComponent(internalID))
-                                                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
-                                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                                                        .addComponent(ecuVersion)
-                                                        .addComponent(lblEcuVersion)
-                                                        .addComponent(storageAddress)
-                                                        .addComponent(lblStorageAddress))
-                                                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
-                                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                                                        .addComponent(lblFilesize)
-                                                        .addComponent(fileSize)
-                                                        .addComponent(lblEditStamp)
-                                                        .addComponent(editStamp))))
-                                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(lblTables)
-                                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-                                        .addGroup(layout.createSequentialGroup()
-                                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                                                        .addComponent(lblMake)
-                                                        .addComponent(make))
-                                                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
-                                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                                                        .addComponent(lblMarket)
-                                                        .addComponent(market))
-                                                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
-                                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                                                        .addComponent(lblYear)
-                                                        .addComponent(year))
-                                                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
-                                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                                                        .addComponent(lblModel)
-                                                        .addComponent(model))
-                                                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
-                                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                                                        .addComponent(lblSubmodel)
-                                                        .addComponent(submodel))
-                                                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
-                                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                                                        .addComponent(lblTransmission)
-                                                        .addComponent(transmission)))
-                                        .addComponent(jScrollPane1, 0, 0, Short.MAX_VALUE))
-                                .addContainerGap())
+            layout.createParallelGroup(Alignment.TRAILING)
+                .addGroup(layout.createSequentialGroup()
+                    .addGap(21)
+                    .addGroup(layout.createParallelGroup(Alignment.LEADING)
+                        .addComponent(lblFilename)
+                        .addComponent(fileName))
+                    .addGap(26)
+                    .addGroup(layout.createParallelGroup(Alignment.LEADING)
+                        .addComponent(lblECURevision)
+                        .addComponent(xmlID)
+                        .addComponent(lblInternalId)
+                        .addComponent(internalID))
+                    .addPreferredGap(ComponentPlacement.RELATED)
+                    .addGroup(layout.createParallelGroup(Alignment.LEADING)
+                        .addComponent(lblEcuVersion)
+                        .addComponent(ecuVersion)
+                        .addComponent(lblStorageAddress)
+                        .addComponent(storageAddress))
+                    .addPreferredGap(ComponentPlacement.RELATED)
+                    .addGroup(layout.createParallelGroup(Alignment.LEADING)
+                        .addComponent(lblFilesize)
+                        .addComponent(fileSize)
+                        .addComponent(lblEditStamp)
+                        .addComponent(editStamp))
+                    .addPreferredGap(ComponentPlacement.RELATED)
+                    .addGroup(layout.createParallelGroup(Alignment.LEADING)
+                        .addComponent(lblChecksum)
+                        .addComponent(checksum)
+                        .addComponent(lblTables))
+                    .addPreferredGap(ComponentPlacement.RELATED)
+                    .addGroup(layout.createParallelGroup(Alignment.LEADING)
+                        .addGroup(layout.createSequentialGroup()
+                            .addGroup(layout.createParallelGroup(Alignment.LEADING)
+                                .addComponent(lblMake)
+                                .addComponent(make))
+                            .addPreferredGap(ComponentPlacement.RELATED)
+                            .addGroup(layout.createParallelGroup(Alignment.LEADING)
+                                .addComponent(lblMarket)
+                                .addComponent(market))
+                            .addPreferredGap(ComponentPlacement.RELATED)
+                            .addGroup(layout.createParallelGroup(Alignment.LEADING)
+                                .addComponent(lblYear)
+                                .addComponent(year))
+                            .addPreferredGap(ComponentPlacement.RELATED)
+                            .addGroup(layout.createParallelGroup(Alignment.LEADING)
+                                .addComponent(lblModel)
+                                .addComponent(model))
+                            .addPreferredGap(ComponentPlacement.RELATED)
+                            .addGroup(layout.createParallelGroup(Alignment.LEADING)
+                                .addComponent(lblSubmodel)
+                                .addComponent(submodel))
+                            .addPreferredGap(ComponentPlacement.RELATED)
+                            .addGroup(layout.createParallelGroup(Alignment.LEADING)
+                                .addComponent(lblTransmission)
+                                .addComponent(transmission)))
+                        .addComponent(jScrollPane1, 0, 0, Short.MAX_VALUE))
+                    .addContainerGap())
         );
+        this.setLayout(layout);
     }// </editor-fold>//GEN-END:initComponents
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -302,6 +314,8 @@ public class RomPropertyPanel extends javax.swing.JPanel {
     private javax.swing.JLabel year;
     private javax.swing.JLabel lblEditStamp;
     private javax.swing.JLabel editStamp;
+    private javax.swing.JLabel lblChecksum;
+    private javax.swing.JLabel checksum;
     // End of variables declaration//GEN-END:variables
 
 }

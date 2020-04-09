@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2015 RomRaider.com
+ * Copyright (C) 2006-2019 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -47,6 +47,8 @@ public class Settings implements Serializable {
     public static final String NEW_LINE = System.getProperty("line.separator");
     public static final String TAB = "\t";
     public static final String BLANK = "";
+    public static final String COMMA = ",";
+    public static final String SEMICOLON = ";";
 
     /* Clipboard Settings */
     public static final String TABLE_CLIPBOARD_FORMAT_ELEMENT = "table-clipboard-format";
@@ -88,29 +90,40 @@ public class Settings implements Serializable {
     /* Table Settings */
     public static final String defaultTableToolBarName = "Table Tools";
 
-    public static final int ENDIAN_LITTLE = 1;
-    public static final int ENDIAN_BIG = 2;
+    public enum Endian {
+        LITTLE(1),
+        BIG(2);
 
-    public static final int TABLE_1D = 1;
-    public static final int TABLE_2D = 2;
-    public static final int TABLE_3D = 3;
-    public static final int TABLE_X_AXIS = 4;
-    public static final int TABLE_Y_AXIS = 5;
-    public static final int TABLE_SWITCH = 6;
+        private final int marshallingCode;
 
-    public static final int DATA_TYPE_ORIGINAL = 0;
-    public static final int DATA_TYPE_BIN = 1;
-    public static final int DATA_TYPE_REAL = 3;
+        Endian(int marshallingCode) {
+            this.marshallingCode = marshallingCode;
+        }
 
-    public static final int COMPARE_DISPLAY_PERCENT = 1;
-    public static final int COMPARE_DISPLAY_ABSOLUTE = 2;
+        public String getMarshallingString() {
+            return String.valueOf(marshallingCode);
+        }
+    }
 
+    public enum DataType {
+        ORIGINAL,
+        BIN
+    }
+
+    public enum CompareDisplay {
+        PERCENT,
+        ABSOLUTE
+    }
+
+    public static final int MOVI20_MIN_VALUE = 0xfff80000;
+    public static final int MOVI20_MAX_VALUE = 0x0007ffff;
+    public static final int MOVI20S_MIN_VALUE = 0xf8000000;
+    public static final int MOVI20S_MAX_VALUE = 0x07ffff00;
+    public static final int STORAGE_TYPE_MOVI20 = 20;
+    public static final int STORAGE_TYPE_MOVI20S = 28;
     public static final int STORAGE_TYPE_FLOAT = 99;
-    public static final boolean STORAGE_DATA_SIGNED = false;
 
     public static final Color UNCHANGED_VALUE_COLOR = new Color(160, 160, 160);
-
-    public static final String INVALID_ATTRIBUTE_TEXT = "invalid";
 
     public static final String DEFAULT_TABLE_NAME = "Unknown";
 
@@ -131,10 +144,6 @@ public class Settings implements Serializable {
     public static Color TABLE_EQUAL_COLOR = new Color(52,114,53);
     public static Color TABLE_DIFFERENT_COLOR = new Color(193, 27, 23);
     public static Color TABLE_MISSING_COLOR = new Color(251,185,23);
-
-    /* Compare DTC Foreground Colors */
-    public static Color TABLESWITCH_DEFAULT_COLOR = Color.black;
-    public static Color TABLESWITCH_DIFFERENT_COLOR = new Color(193, 27, 23);
 
     /* MDI Desktop Settings*/
     public static int FRAME_OFFSET = 20;
@@ -185,6 +194,7 @@ public class Settings implements Serializable {
     private Color selectColor = new Color(204, 204, 204);
     private Color highlightColor = new Color(27, 161, 226);
     private Color liveValueColor = new Color (0, 255, 0);
+    private Color curLiveValueColor = new Color (255, 0, 255);
 
     private Color decreaseBorder = new Color(0, 0, 255);
     private Color increaseBorder = new Color(255, 0, 0);
@@ -212,6 +222,7 @@ public class Settings implements Serializable {
     private Point loggerWindowLocation = new Point();
     private boolean loggerWindowMaximized;
     private int loggerSelectedTabIndex;
+    private int loggerSelectedGaugeIndex = 0;
     private boolean loggerParameterListState = true;
     private ConnectionProperties loggerConnectionProperties;
     private Map<String, EcuDefinition> loggerEcuDefinitionMap;
@@ -242,6 +253,26 @@ public class Settings implements Serializable {
     private String defaultScale = "Metric";
 
     private Map<String, IntfKitSensor> phidgetSensors;
+
+    /**
+     * Car selection for Dyno tab
+     */
+    private String selectedCar = "";
+
+    /**
+     * Gear selection for selected car on Dyno tab
+     */
+    private String selectedGear = "";
+
+    /**
+     * Throttle threshold value to indicate WOT on Dyno tab
+     */
+    private String tpsThreshold;
+
+    /**
+     * Throttle value units % or VDC on Dyno tab, not all cars support both
+     */
+    private String tpsThresholdPID;
 
     public Settings() {
         //center window by default
@@ -380,6 +411,14 @@ public class Settings implements Serializable {
 
     public void setLiveValueColor(Color liveValueColor) {
         this.liveValueColor = liveValueColor;
+    }
+
+    public Color getCurLiveValueColor() {
+        return this.curLiveValueColor;
+    }
+
+    public void setCurLiveValueColor(Color curLiveValueColor) {
+        this.curLiveValueColor = curLiveValueColor;
     }
 
     public Color getSelectColor() {
@@ -625,6 +664,14 @@ public class Settings implements Serializable {
 
     public int getLoggerSelectedTabIndex() {
         return loggerSelectedTabIndex;
+    }
+
+    public void setLoggerSelectedGaugeIndex(int loggerSelectGaugeIndex) {
+        this.loggerSelectedGaugeIndex = loggerSelectGaugeIndex;
+    }
+
+    public int getLoggerSelectedGaugeIndex() {
+        return loggerSelectedGaugeIndex;
     }
 
     public Map<String, String> getLoggerPluginPorts() {
@@ -879,5 +926,37 @@ public class Settings implements Serializable {
             Map<String, IntfKitSensor> phidgetSensors) {
 
         this.phidgetSensors = phidgetSensors;
+    }
+
+    public String getSelectedCar() {
+        return this.selectedCar;
+    }
+
+    public String getSelectedGear() {
+        return this.selectedGear;
+    }
+
+    public String getDynoThrottle() {
+        return this.tpsThresholdPID;
+    }
+
+    public String getDynoThreshold() {
+        return this.tpsThreshold;
+    }
+
+    public void setSelectedCar(final String value) {
+        this.selectedCar = value;
+    }
+
+    public void setSelectedGear(final String value) {
+        this.selectedGear = value;
+    }
+
+    public void setDynoThrottle(final String value) {
+        this.tpsThresholdPID = value;
+    }
+
+    public void setDynoThreshold(final String value) {
+        this.tpsThreshold = value;
     }
 }
