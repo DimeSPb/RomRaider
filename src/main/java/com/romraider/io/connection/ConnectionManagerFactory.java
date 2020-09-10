@@ -30,6 +30,7 @@ import java.util.Set;
 import org.apache.log4j.Logger;
 
 import com.romraider.Settings;
+import com.romraider.io.elm327.ElmConnectionManager;
 import com.romraider.io.j2534.api.J2534DllLocator;
 import com.romraider.io.j2534.api.J2534Library;
 import com.romraider.io.j2534.api.J2534TransportFactory;
@@ -146,9 +147,15 @@ public final class ConnectionManagerFactory {
         }
         catch (Throwable t) {
             settings.setJ2534Device(null);
-            LOGGER.info(String.format("%s, trying serial connection...",
-                    t.getMessage()));
-            return new SerialConnectionManager(portName, connectionProperties);
-        }
+            
+            if(SettingsManager.getSettings().getElm327Enabled()) {           
+	            LOGGER.info(String.format("%s, trying to connect to ELM327...", t.getMessage()));
+	            return new ElmConnectionManager(portName, connectionProperties);	
+            }
+            else {
+              LOGGER.info(String.format("%s, trying serial connection...", t.getMessage()));
+              return new SerialConnectionManager(portName, connectionProperties);	
+            }
+        }   
     }
 }

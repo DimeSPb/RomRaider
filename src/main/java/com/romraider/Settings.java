@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2019 RomRaider.com
+ * Copyright (C) 2006-2020 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -267,12 +267,17 @@ public class Settings implements Serializable {
     /**
      * Throttle threshold value to indicate WOT on Dyno tab
      */
-    private String tpsThreshold;
+    private String tpsThreshold = "";
 
     /**
      * Throttle value units % or VDC on Dyno tab, not all cars support both
      */
-    private String tpsThresholdPID;
+    private String tpsThresholdPID = "";
+
+    /**
+     * Sets if we search for the ELM327 on startup (small delay)
+     */
+	private Boolean searchElm327 = false;
 
     public Settings() {
         //center window by default
@@ -943,7 +948,11 @@ public class Settings implements Serializable {
     public String getDynoThreshold() {
         return this.tpsThreshold;
     }
-
+    
+	public boolean getElm327Enabled() {
+		return this.searchElm327;
+	}
+	
     public void setSelectedCar(final String value) {
         this.selectedCar = value;
     }
@@ -959,4 +968,10 @@ public class Settings implements Serializable {
     public void setDynoThreshold(final String value) {
         this.tpsThreshold = value;
     }
+
+	public void setElm327Enabled(Boolean value) {
+		this.searchElm327 = value;			
+	}
+
+
 }

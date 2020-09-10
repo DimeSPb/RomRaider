@@ -17,21 +17,24 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-package com.romraider.io.protocol;
+package com.romraider.logger.ecu.exception;
 
-import com.romraider.logger.ecu.definition.Module;
+public final class PluginNotInstalledException extends RuntimeException {
 
-public interface ProtocolDS2 extends Protocol {
+    private static final long serialVersionUID = -523838685805525387L;
 
-    byte[] constructReadProcedureRequest(Module module, byte[][] addresses);
+    public PluginNotInstalledException() {
+    }
 
-    byte[] constructReadGroupRequest(Module module, byte[][] addresses);
+    public PluginNotInstalledException(String string) {
+        super(string);
+    }
 
-    byte[] constructReadMemoryRequest(
-            Module module, byte[][] convertToByteAddresses, int length);
+    public PluginNotInstalledException(String string, Throwable throwable) {
+        super(string, throwable);
+    }
 
-    byte[] constructSetAddressRequest(
-            Module module, byte[][] convertToByteAddresses);
-
-    void validateSetAddressResponse(byte[] response);
+    public PluginNotInstalledException(Throwable throwable) {
+        super(throwable);
+    }
 }

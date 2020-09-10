@@ -153,16 +153,18 @@ public final class GraphUpdateHandler implements DataUpdateHandler, ConvertorUpd
     }
 
     public synchronized void handleDataUpdate(final Response response) {
-        for (final LoggerData loggerData : response.getData()) {
-            final XYSeries series = seriesMap.get(loggerData);
-            if (series != null && !paused) {
-                SwingUtilities.invokeLater(new Runnable() {
-                    public void run() {
-                        series.add((response.getTimestamp() - startTime) / 1000.0, response.getDataValue(loggerData));
-                    }
-                });
-            }
-        }
+    	if(!paused) {
+	        SwingUtilities.invokeLater(new Runnable() {
+	            public void run() {
+	                for (final LoggerData loggerData : response.getData()) {
+	                    final XYSeries series = seriesMap.get(loggerData);
+	                    if (series != null) {
+	                    	series.add((response.getTimestamp() - startTime) / 1000.0, response.getDataValue(loggerData));
+	                    }
+	                }
+	            }
+	        });
+    	}
     }
 
     public synchronized void deregisterData(LoggerData loggerData) {

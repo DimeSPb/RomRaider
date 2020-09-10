@@ -97,6 +97,9 @@ public final class LoggerDefinitionHandler extends DefaultHandler {
     private static final String ATTR_STORAGETYPE = "storagetype";
     private static final String ATTR_ENDIAN = "endian";
     private static final String ATTR_BAUD = "baud";
+    private static final String ATTR_CANID = "canid";
+    private static final String ATTR_SAE = "sae";
+    private static final String ATTR_KWP = "kwp";
     private static final String ATTR_DATABITS = "databits";
     private static final String ATTR_STOPBITS = "stopbits";
     private static final String ATTR_PARITY = "parity";

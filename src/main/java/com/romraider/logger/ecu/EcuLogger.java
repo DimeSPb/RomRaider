@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2019 RomRaider.com
+ * Copyright (C) 2006-2020 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -58,6 +58,7 @@ import static javax.swing.SwingConstants.BOTTOM;
 import static javax.swing.SwingConstants.RIGHT;
 import static javax.swing.SwingConstants.VERTICAL;
 import static javax.swing.SwingUtilities.invokeLater;
+import com.romraider.swing.menubar.RadioButtonMenuItem;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -186,11 +187,12 @@ import com.romraider.logger.external.core.ExternalDataSourceLoader;
 import com.romraider.logger.external.core.ExternalDataSourceLoaderImpl;
 import com.romraider.swing.AbstractFrame;
 import com.romraider.swing.SetFont;
-import com.romraider.swing.menubar.RadioButtonMenuItem;
 import com.romraider.util.FormatFilename;
 import com.romraider.util.JREChecker;
 import com.romraider.util.ResourceUtil;
 import com.romraider.util.SettingsManager;
+
+
 import com.romraider.util.ThreadUtil;
 
 /*
@@ -1568,7 +1570,8 @@ public final class EcuLogger extends AbstractFrame implements MessageListener {
             }
         }
 
-        ecuIdLabel.setText(replaceString(ecuIdLabel.getText(), target));
+        final String ecuId = ecuIdLabel.getText().split(": ")[1];
+        ecuIdLabel.setText(buildEcuInfoLabelText(target + " ID", ecuId));
 
         for (String key : componentList.keySet()) {
             if (key.equals("ecuIdItem")) {
@@ -1603,6 +1606,17 @@ public final class EcuLogger extends AbstractFrame implements MessageListener {
         return loggerTransport;
     }
 
+	public void updateElmSelectable() {	
+		boolean value = getSettings().isObdProtocol();
+		RadioButtonMenuItem c = (RadioButtonMenuItem)getComponentList().get("elmEnabled");
+		c.setEnabled(value);	
+		
+		if(!value) {
+			c.setSelected(false);
+			getSettings().setElm327Enabled(false);
+		}
+	}
+    
     private Map<Transport, Collection<Module>> getTransportMap() {
         return protocolList.get(getSettings().getLoggerProtocol());
     }
@@ -1983,6 +1997,10 @@ public final class EcuLogger extends AbstractFrame implements MessageListener {
         getSettings().setRefreshMode(refreshMode);
         refresher.setRefreshMode(refreshMode);
     }
+    
+	public void setElmEnabled(Boolean value) {		
+        getSettings().setElm327Enabled(value);
+	}
 
     private JProgressBar startbar() {
         startStatus = new JWindow();
@@ -2076,4 +2094,6 @@ public final class EcuLogger extends AbstractFrame implements MessageListener {
             ecuLogger.setVisible(true);
         }
     }
+
+
 }

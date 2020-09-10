@@ -45,7 +45,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
-public final class SerialConnectionImpl implements SerialConnection {
+public class SerialConnectionImpl implements SerialConnection {
     private static final Logger LOGGER = getLogger(SerialConnectionImpl.class);
     private static final String RXTX_READ_LINE_HACK = "Underlying input stream returned zero bytes";
     private final SerialPort serialPort;

@@ -25,7 +25,7 @@ public final class Transport {
     private final String id;
     private final String name;
     private final String description;
-
+    
     public Transport(String id, String name, String description) {
         checkNotNull(name, "id");
         checkNotNull(name, "name");
@@ -34,7 +34,7 @@ public final class Transport {
         this.name = name;
         this.description = description;
     }
-
+      
     public String getId() {
         return id;
     }

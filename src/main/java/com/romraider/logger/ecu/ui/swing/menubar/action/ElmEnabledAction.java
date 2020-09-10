@@ -17,21 +17,23 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-package com.romraider.io.protocol;
+package com.romraider.logger.ecu.ui.swing.menubar.action;
 
-import com.romraider.logger.ecu.definition.Module;
+import com.romraider.logger.ecu.EcuLogger;
+import com.romraider.swing.menubar.action.AbstractAction;
+import java.awt.event.ActionEvent;
 
-public interface ProtocolDS2 extends Protocol {
+public final class ElmEnabledAction extends AbstractAction {
 
-    byte[] constructReadProcedureRequest(Module module, byte[][] addresses);
+    public ElmEnabledAction(EcuLogger logger) {
+        super(logger);
+    }
 
-    byte[] constructReadGroupRequest(Module module, byte[][] addresses);
-
-    byte[] constructReadMemoryRequest(
-            Module module, byte[][] convertToByteAddresses, int length);
-
-    byte[] constructSetAddressRequest(
-            Module module, byte[][] convertToByteAddresses);
-
-    void validateSetAddressResponse(byte[] response);
+    public void actionPerformed(ActionEvent actionEvent) {
+        try {
+            logger.setElmEnabled((Boolean) getValue(SELECTED_KEY));
+        } catch (Exception e) {
+            logger.reportError(e);
+        }
+    }
 }

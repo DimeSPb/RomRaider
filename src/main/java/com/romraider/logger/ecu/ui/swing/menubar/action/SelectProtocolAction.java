@@ -61,7 +61,7 @@ public final class SelectProtocolAction extends AbstractAction {
 
     @Override
     public void actionPerformed(ActionEvent actionEvent) {
-        try {
+        try {        	
             logger.stopLogging();
             new CommSettings();
         } catch (Exception e) {
@@ -248,7 +248,10 @@ public final class SelectProtocolAction extends AbstractAction {
                     final String parentName = (String) parent.getUserObject();
                     logger.getSettings().setLoggerProtocol(parentName);
                     logger.getSettings().setTransportProtocol(((Transport) o).getId());
+
                 }
+                
+                logger.updateElmSelectable();                          	
                 logger.loadLoggerParams();
                 closeDialog();
             }

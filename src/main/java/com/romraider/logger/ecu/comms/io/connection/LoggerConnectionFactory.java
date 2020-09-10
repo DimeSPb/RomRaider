@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2014 RomRaider.com
+ * Copyright (C) 2006-2020 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,9 @@ package com.romraider.logger.ecu.comms.io.connection;
 import com.romraider.io.connection.ConnectionManager;
 import static com.romraider.io.connection.ConnectionManagerFactory.getManager;
 import com.romraider.io.connection.ConnectionProperties;
+import com.romraider.io.elm327.ElmConnectionManager;
 import com.romraider.logger.ecu.exception.UnsupportedProtocolException;
+import com.romraider.logger.ecu.comms.io.connection.ELMOBDLoggerConnection;
 
 public final class LoggerConnectionFactory {
     private LoggerConnectionFactory() {
@@ -36,20 +38,22 @@ public final class LoggerConnectionFactory {
         return instantiateConnection(protocolName, manager);
     }
 
-    private static LoggerConnection instantiateConnection(
-            String protocolName,
-            ConnectionManager manager) {
-
-        try {
-            Class<?> cls = Class.forName(
-                    LoggerConnectionFactory.class.getPackage().getName() + 
-                    "." + protocolName + "LoggerConnection");
-            return (LoggerConnection) cls.getConstructor(
-                    ConnectionManager.class).newInstance(manager);
-        } catch (Exception e) {
-            manager.close();
-            throw new UnsupportedProtocolException(
-                    protocolName, e);
-        }
+    private static LoggerConnection instantiateConnection(String protocolName,
+    		ConnectionManager manager) {
+    	if(manager.getClass() == ElmConnectionManager.class &&
+    			protocolName.equals("OBD")) {
+        	return new ELMOBDLoggerConnection((ElmConnectionManager)manager);
+    	}
+    	else {
+	        try {
+	        	Class<?> cls = Class.forName(LoggerConnectionFactory.
+	        			class.getPackage().getName() +  "." + protocolName + "LoggerConnection");
+	            return (LoggerConnection) cls.getConstructor(
+	            		ConnectionManager.class).newInstance(manager);
+	        } catch (Exception e) {
+	            manager.close();
+	            throw new UnsupportedProtocolException(protocolName, e);
+	        }
+    	}
     }
 }
