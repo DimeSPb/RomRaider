@@ -66,13 +66,14 @@ public final class ReadCodesManagerImpl implements ReadCodesManager {
     public final int readCodes() {
         final ArrayList<EcuQuery> queries = new ArrayList<EcuQuery>();
         String lastCode = dtcodes.get(dtcodes.size() - 1).getId();
-        if (ecuInitLength < 104) {
-            lastCode = "D488";
-        }
-        else if (ecuInitLength < 56) {
+        if (ecuInitLength < 56) {
             lastCode = "D256";
         }
-        LOGGER.debug(
+        else if (ecuInitLength < 104) {
+            lastCode = "D488";
+        }
+        else
+            LOGGER.debug(
                 "DT codes ECU init length: " + ecuInitLength +
                 ", Last code: " + lastCode);
 
