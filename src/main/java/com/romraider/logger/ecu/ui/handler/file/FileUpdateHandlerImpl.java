@@ -37,6 +37,7 @@ import java.util.Set;
 import com.romraider.logger.ecu.comms.query.Response;
 import com.romraider.logger.ecu.definition.ConvertorUpdateListener;
 import com.romraider.logger.ecu.definition.LoggerData;
+import com.romraider.logger.ecu.ui.EcuRelatedMessageListener;
 import com.romraider.logger.ecu.ui.MessageListener;
 import com.romraider.logger.ecu.ui.StatusChangeListener;
 
@@ -64,7 +65,7 @@ public final class FileUpdateHandlerImpl implements FileUpdateHandler, Convertor
 
     private Line currentLine = new Line(loggerDatas.keySet());
 
-    public FileUpdateHandlerImpl(MessageListener messageListener) {
+    public FileUpdateHandlerImpl(EcuRelatedMessageListener messageListener) {
         fileLogger = new FileLoggerImpl(messageListener);
     }
 

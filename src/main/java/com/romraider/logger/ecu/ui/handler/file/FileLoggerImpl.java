@@ -32,6 +32,7 @@ import java.util.ResourceBundle;
 
 import com.romraider.Settings;
 import com.romraider.logger.ecu.exception.FileLoggerException;
+import com.romraider.logger.ecu.ui.EcuRelatedMessageListener;
 import com.romraider.logger.ecu.ui.MessageListener;
 import com.romraider.util.FormatFilename;
 import com.romraider.util.ResourceUtil;
@@ -43,13 +44,13 @@ public final class FileLoggerImpl implements FileLogger {
             FileLoggerImpl.class.getName());
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
     private final SimpleDateFormat timestampFormat = new SimpleDateFormat("HH:mm:ss.SSS");
-    private final MessageListener messageListener;
+    private final EcuRelatedMessageListener messageListener;
     private boolean started;
     private OutputStream os;
     private long startTimestamp;
     //private boolean zero;
 
-    public FileLoggerImpl(MessageListener messageListener) {
+    public FileLoggerImpl(EcuRelatedMessageListener messageListener) {
         checkNotNull(messageListener);
         this.messageListener = messageListener;
     }
@@ -134,7 +135,7 @@ public final class FileLoggerImpl implements FileLogger {
         if (!logDir.endsWith(File.separator)) {
             logDir += File.separator;
         }
-        logDir += "romraiderlog_";
+        logDir += "[" + messageListener.getEcuInit().getEcuId() + "]_";
         Settings settings = SettingsManager.getSettings();
         if (settings.getLogfileNameText() != null
                 && !settings.getLogfileNameText().isEmpty()) {

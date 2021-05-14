@@ -19,6 +19,7 @@
 
 package com.romraider.logger.ecu;
 
+import com.romraider.logger.ecu.ui.*;
 import com.romraider.net.BrowserControl;
 import static com.romraider.Version.LOGGER_DEFS_URL;
 import static com.romraider.Version.PRODUCT_NAME;
@@ -145,13 +146,6 @@ import com.romraider.logger.ecu.profile.UserProfileItem;
 import com.romraider.logger.ecu.profile.UserProfileItemImpl;
 import com.romraider.logger.ecu.profile.UserProfileLoader;
 import com.romraider.logger.ecu.profile.UserProfileLoaderImpl;
-import com.romraider.logger.ecu.ui.CustomButtonGroup;
-import com.romraider.logger.ecu.ui.DataRegistrationBroker;
-import com.romraider.logger.ecu.ui.DataRegistrationBrokerImpl;
-import com.romraider.logger.ecu.ui.EcuDataComparator;
-import com.romraider.logger.ecu.ui.MessageListener;
-import com.romraider.logger.ecu.ui.SerialPortComboBox;
-import com.romraider.logger.ecu.ui.StatusIndicator;
 import com.romraider.logger.ecu.ui.handler.DataUpdateHandlerManager;
 import com.romraider.logger.ecu.ui.handler.DataUpdateHandlerManagerImpl;
 import com.romraider.logger.ecu.ui.handler.dash.DashboardUpdateHandler;
@@ -206,7 +200,7 @@ TODO: Add custom graph tab (eg. engine speed vs. boost, etc.)
 TODO: Add log analysis tab (or maybe new window?), including log playback, custom graphs, map compare, etc
  */
 
-public final class EcuLogger extends AbstractFrame implements MessageListener {
+public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageListener {
     private static final long serialVersionUID = 7145423251696282784L;
     private static final Logger LOGGER = Logger.getLogger(EcuLogger.class);
     protected static final ResourceBundle rb = new ResourceUtil().getBundle(
@@ -279,6 +273,11 @@ public final class EcuLogger extends AbstractFrame implements MessageListener {
     private DynoUpdateHandler dynoUpdateHandler;
     private DataUpdateHandlerManager dynoHandlerManager;
     private DataRegistrationBroker dynoTabBroker;
+
+    public EcuInit getEcuInit() {
+        return ecuInit;
+    }
+
     private EcuInit ecuInit;
     private JToggleButton logToFileButton;
     private List<ExternalDataSource> externalDataSources;
