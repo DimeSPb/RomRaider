@@ -29,6 +29,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.ResourceBundle;
 
+import com.romraider.logger.ecu.comms.query.dimemod.DmInitCallback;
 import org.apache.log4j.Logger;
 
 import com.romraider.Settings;
@@ -235,6 +236,11 @@ public final class NCSLoggerConnection implements LoggerConnection {
             LOGGER.debug(String.format("%s Init Response <--- %s",
                 module, asHex(initResponse)));  // contains ECUID
         protocol.processEcuInitResponse(callback, initResponse);
+    }
+
+    @Override
+    public void dmInit(DmInitCallback callback, Module module) {
+        // do nothing
     }
 
     @Override

@@ -22,6 +22,8 @@ package com.romraider.logger.ecu.comms.io.connection;
 import static com.romraider.util.ParamChecker.checkNotNull;
 
 import static org.apache.log4j.Logger.getLogger;
+
+import com.romraider.logger.ecu.comms.query.dimemod.DmInitCallback;
 import org.apache.log4j.Logger;
 
 import java.util.ArrayList;
@@ -86,6 +88,11 @@ public final class ELMOBDLoggerConnection implements LoggerConnection {
     		throw new SerialCommunicationException("ELM rejected request!");
     	}
 
+    }
+
+    @Override
+    public void dmInit(DmInitCallback callback, Module module) {
+        // do nothing
     }
 
     private String concatBytes(final byte[] bytes) {

@@ -28,6 +28,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
 
+import com.romraider.logger.ecu.comms.query.dimemod.DmInitCallback;
 import org.apache.log4j.Logger;
 
 import com.romraider.Settings;
@@ -142,6 +143,11 @@ public final class OBDLoggerConnection implements LoggerConnection {
             LOGGER.debug(String.format("%s Init Response <--- %s",
                 module, asHex(processedResponse)));
         protocol.processEcuInitResponse(callback, processedResponse);
+    }
+
+    @Override
+    public void dmInit(DmInitCallback callback, Module module) {
+        // do nothing
     }
 
     @Override

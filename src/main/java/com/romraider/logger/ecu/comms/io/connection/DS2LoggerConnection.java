@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.ResourceBundle;
 
+import com.romraider.logger.ecu.comms.query.dimemod.DmInitCallback;
 import org.apache.log4j.Logger;
 
 import com.romraider.Settings;
@@ -94,6 +95,10 @@ public final class DS2LoggerConnection implements LoggerConnection {
         protocol.processEcuInitResponse(callback, processedResponse);
     }
 
+    @Override
+    public void dmInit(DmInitCallback callback, Module module) {
+        // do nothing
+    }
     @Override
     public final void sendAddressReads(
             Collection<EcuQuery> queries,

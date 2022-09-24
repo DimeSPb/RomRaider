@@ -22,6 +22,7 @@ package com.romraider.logger.ecu.comms.controller;
 import static com.romraider.util.ParamChecker.checkNotNull;
 import static com.romraider.util.ThreadUtil.runAsDaemon;
 
+import com.romraider.logger.ecu.comms.query.dimemod.DmInitCallback;
 import org.apache.log4j.Logger;
 
 import com.romraider.logger.ecu.comms.manager.QueryManager;
@@ -37,10 +38,10 @@ public final class LoggerControllerImpl implements LoggerController {
     private static final Logger LOGGER = Logger.getLogger(LoggerControllerImpl.class);
     private final QueryManager queryManager;
 
-    public LoggerControllerImpl(EcuInitCallback ecuInitCallback, MessageListener messageListener,
-            DataUpdateHandler... dataUpdateHandlers) {
+    public LoggerControllerImpl(EcuInitCallback ecuInitCallback, DmInitCallback dmInitCallback, MessageListener messageListener,
+                                DataUpdateHandler... dataUpdateHandlers) {
         checkNotNull(ecuInitCallback, messageListener, dataUpdateHandlers);
-        queryManager = new QueryManagerImpl(ecuInitCallback, messageListener, dataUpdateHandlers);
+        queryManager = new QueryManagerImpl(ecuInitCallback, dmInitCallback, messageListener, dataUpdateHandlers);
     }
 
     @Override

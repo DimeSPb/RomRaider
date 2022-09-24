@@ -19,6 +19,8 @@
 
 package com.romraider.logger.ecu;
 
+import com.romraider.logger.ecu.comms.query.dimemod.DmInit;
+import com.romraider.logger.ecu.comms.query.dimemod.DmInitCallback;
 import com.romraider.logger.ecu.ui.*;
 import com.romraider.net.BrowserControl;
 import static com.romraider.Version.LOGGER_DEFS_URL;
@@ -237,6 +239,7 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
     private ResetManager resetManager;
     private JLabel messageLabel;
     private JLabel calIdLabel;
+    private JLabel dmLabel;
     private JLabel ecuIdLabel;
     private JLabel statsLabel;
     private JTabbedPane tabbedPane;
@@ -282,6 +285,7 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
     }
 
     private EcuInit ecuInit;
+    private DmInit dmInit;
     private JToggleButton logToFileButton;
     private List<ExternalDataSource> externalDataSources;
     private List<EcuParameter> ecuParams;
@@ -401,6 +405,8 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
                 LOGGER.info(target + " ID = " + ecuId);
                 if (ecuInit == null || !ecuInit.getEcuId().equals(ecuId)) {
                     ecuInit = newEcuInit;
+                    dmInit = null;
+                    dmLabel.setText("");
                     invokeLater(new Runnable() {
                         @Override
                         public void run() {
@@ -431,6 +437,30 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
                 }
             }
         };
+
+        DmInitCallback dmInitCallback = new DmInitCallback() {
+            @Override
+            public void callback(DmInit dmInit) {
+                if (dmInit != EcuLogger.this.dmInit) {
+                    invokeLater(() -> {
+                        EcuLogger.this.dmInit = dmInit;
+                        dmLabel.setText("DimeMod v" + dmInit.getDimeModVersion());
+                        loadUserProfile(getSettings().getLoggerProfileFilePath());
+                    });
+                }
+            }
+
+            @Override
+            public boolean needToInit() {
+                return dmInit == null;
+            }
+
+            @Override
+            public DmInit getDmInit() {
+                return EcuLogger.this.dmInit;
+            }
+        };
+
         fileUpdateHandler = new FileUpdateHandlerImpl(this);
         dataTableModel = new LiveDataTableModel();
         liveDataUpdateHandler = new LiveDataUpdateHandler(dataTableModel);
@@ -441,7 +471,7 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
         mafUpdateHandler = new MafUpdateHandler();
         injectorUpdateHandler = new InjectorUpdateHandler();
         dynoUpdateHandler = new DynoUpdateHandler();
-        controller = new LoggerControllerImpl(ecuInitCallback, this, liveDataUpdateHandler,
+        controller = new LoggerControllerImpl(ecuInitCallback, dmInitCallback,this, liveDataUpdateHandler,
                 graphUpdateHandler, dashboardUpdateHandler, mafUpdateHandler, injectorUpdateHandler,
                 dynoUpdateHandler, fileUpdateHandler, TableUpdateHandler.getInstance());
 
@@ -463,6 +493,7 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
         resetManager = new ResetManagerImpl(this);
         messageLabel = new JLabel(ECU_LOGGER_TITLE);
         calIdLabel = new JLabel(buildEcuInfoLabelText(CAL_ID_LABEL, null));
+        dmLabel = new JLabel("");
         ecuIdLabel = new JLabel(buildEcuInfoLabelText(target + " ID", null));
         statsLabel = buildStatsLabel();
         tabbedPane = new JTabbedPane(BOTTOM);
@@ -579,6 +610,7 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
                 dataLoader.loadConfigFromXml(loggerConfigFilePath, getSettings().getLoggerProtocol(),
                         getSettings().getFileLoggingControllerSwitchId(), ecuInit);
                 List<EcuParameter> ecuParams = dataLoader.getEcuParameters();
+                updateDmEcuParams(ecuParams);
                 addConvertorUpdateListeners(ecuParams);
                 loadEcuParams(ecuParams);
                 loadEcuSwitches(dataLoader.getEcuSwitches());
@@ -624,6 +656,13 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
                 reportError(e);
             }
         }
+    }
+
+    private void updateDmEcuParams(List<EcuParameter> ecuParams) {
+        if (dmInit == null) {
+            return;
+        }
+        ecuParams.addAll(dmInit.getEcuParams());
     }
 
     private void showErrorConfigDialog(Exception e) {
@@ -1310,6 +1349,7 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
         JPanel ecuIdPanel = new JPanel(new FlowLayout());
         ecuIdPanel.setBorder(createLoweredBevelBorder());
         ecuIdPanel.add(calIdLabel);
+        ecuIdPanel.add(dmLabel);
         ecuIdPanel.add(ecuIdLabel);
         constraints.gridx = 2;
         constraints.gridy = 0;

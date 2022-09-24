@@ -39,6 +39,8 @@ import java.util.Set;
 
 import javax.swing.SwingUtilities;
 
+import com.romraider.logger.ecu.EcuLogger;
+import com.romraider.logger.ecu.comms.query.dimemod.DmInitCallback;
 import org.apache.log4j.Logger;
 
 import com.romraider.Settings;
@@ -78,6 +80,7 @@ public final class QueryManagerImpl implements QueryManager {
     private static final Settings settings = SettingsManager.getSettings();
     private static final String EXT = "Externals";
     private final EcuInitCallback ecuInitCallback;
+    private final DmInitCallback dmInitCallback;
     private final MessageListener messageListener;
     private FileLoggerControllerSwitchMonitor monitor;
     private EcuQuery fileLoggerQuery;
@@ -90,12 +93,14 @@ public final class QueryManagerImpl implements QueryManager {
     private long queryStart;
 
     public QueryManagerImpl(EcuInitCallback ecuInitCallback,
+            DmInitCallback dmInitCallback,
             MessageListener messageListener,
             DataUpdateHandler... dataUpdateHandlers) {
         checkNotNull(ecuInitCallback,
                 messageListener,
                 dataUpdateHandlers);
         this.ecuInitCallback = ecuInitCallback;
+        this.dmInitCallback = dmInitCallback;
         this.messageListener = messageListener;
         this.updateHandlers = dataUpdateHandlers;
         stop = true;
@@ -245,6 +250,21 @@ public final class QueryManagerImpl implements QueryManager {
             connection.ecuInit(ecuInitCallback, module);
             messageListener.reportMessage(MessageFormat.format(
                     rb.getString("INITDONE"), module.getName(), name));
+            try {
+                if (dmInitCallback != null) {
+                    messageListener.reportMessage(MessageFormat.format(
+                            rb.getString("SENDDMINIT"), module.getName(), name));
+                    connection.dmInit(dmInitCallback, module);
+                    messageListener.reportMessage(MessageFormat.format(
+                            rb.getString("INITDMDONE"), module.getName(), name));
+                }
+            }
+            catch (Exception e) {
+                messageListener.reportMessage(MessageFormat.format(
+                        rb.getString("INITDMFAIL"), module.getName()));
+                LOGGER.error("Error in DimeMod init: " + e.getMessage());
+            }
+
             rv = true;
         } catch (Exception e) {
             messageListener.reportMessage(MessageFormat.format(

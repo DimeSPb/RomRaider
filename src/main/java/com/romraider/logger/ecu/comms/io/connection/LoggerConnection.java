@@ -22,6 +22,7 @@ package com.romraider.logger.ecu.comms.io.connection;
 import com.romraider.logger.ecu.comms.manager.PollingState;
 import com.romraider.logger.ecu.comms.query.EcuInitCallback;
 import com.romraider.logger.ecu.comms.query.EcuQuery;
+import com.romraider.logger.ecu.comms.query.dimemod.DmInitCallback;
 import com.romraider.logger.ecu.definition.Module;
 
 import java.util.Collection;
@@ -49,6 +50,14 @@ public interface LoggerConnection {
      * @param module - the Module to identify
      */
     void ecuInit(EcuInitCallback callback, Module module);
+
+    /**
+     * Use this method to get the identity the Module communicating with.
+     *
+     * @param callback     - callback which will identify the Module
+     * @param module       - the Module to identify
+     */
+    void dmInit(DmInitCallback callback, Module module);
 
     /**
      * Use this method to query the Module for the parameters included as queries. 
