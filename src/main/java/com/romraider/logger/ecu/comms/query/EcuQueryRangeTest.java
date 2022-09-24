@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2015 RomRaider.com
+ * Copyright (C) 2006-2022 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,8 @@
 
 package com.romraider.logger.ecu.comms.query;
 
+import static com.romraider.util.HexUtil.hexToInt;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -28,58 +30,69 @@ import org.apache.log4j.Logger;
 /**
  * Inspect the address of each query to determine if a single query
  * with a start address and byte length can be substituted as opposed
- * to querying each address separately. 
+ * to querying each address separately.
  */
 public final class EcuQueryRangeTest {
     private static final Logger LOGGER =
             Logger.getLogger(EcuQueryRangeTest.class);
     private final Collection<EcuQuery> queries;
     private int datalength;
+    private int maxLength;
 
 
-    public EcuQueryRangeTest(Collection<EcuQuery> queries) {
+    /**
+     * Initialize the class with a collection of queries and the maximum
+     * distance between the lowest and highest allowed.
+     * @param queries - collection of queries
+     * @param maxLength - the maximum data length
+     */
+    public EcuQueryRangeTest(Collection<EcuQuery> queries, int maxLength) {
         this.queries = queries;
+        this.maxLength = maxLength;
     }
 
     /**
      * Inspect the address of each query to determine if a single query
      * with a start address and byte length can be substituted as opposed
-     * to querying each address separately. 
+     * to querying each address separately.
      */
     public final Collection<EcuQuery> validate() {
         if (queries == null) {
             datalength = -1;
             return null;
         }
-        
+
         final List<EcuQuery> queryList = (List<EcuQuery>) queries;
         final Collection<EcuQuery> newQuery = new ArrayList<EcuQuery>();
         datalength = 0;
         int lowestAddress = Integer.MAX_VALUE;
         int highestAddress = 0;
         for (EcuQuery query : queryList) {
-            int dataSize = EcuQueryData.getDataLength(query);
-            final int address = Integer.parseInt(query.getHex(), 16);
-            if (address < lowestAddress) {
-                lowestAddress = address;
-                newQuery.clear();
-                newQuery.add(query);
+            final int dataTypeLength = EcuQueryData.getDataLength(query);
+            for (int i = 0; i < dataTypeLength; i++) {
+                int address = hexToInt(query.getAddresses()[0]) + i;
+                if (address < lowestAddress) {
+                    lowestAddress = address;
+                    newQuery.clear();
+                    newQuery.add(query);
+                }
+                if (address > highestAddress) {
+                    highestAddress = address;
+                }
+                if (LOGGER.isTraceEnabled())
+                    LOGGER.trace(
+                        String.format(
+                                "addr:%d size:%d lowest:%d highest:%d",
+                                address, highestAddress - lowestAddress + 1,
+                                lowestAddress, highestAddress));
             }
-            if (address > highestAddress) {
-                highestAddress = address + dataSize - 1;
-            }
-            LOGGER.trace(
-                    String.format(
-                            "addr:%d size:%d lowest:%d highest:%d",
-                            address, dataSize, lowestAddress, highestAddress));
         }
-        datalength = highestAddress - lowestAddress;
-        if (datalength <= 128) {
-            datalength ++;
-            return newQuery;
+        datalength = highestAddress - lowestAddress + 1;
+        if (datalength > maxLength) {
+            datalength = 0;
+            newQuery.clear();
         }
-        datalength = 0;
-        return null;
+        return newQuery;
     }
 
     /**
@@ -88,7 +101,8 @@ public final class EcuQueryRangeTest {
      * @return the length or -1 if not properly initialized
      */
     public final int getLength() {
-        LOGGER.trace(
+        if (LOGGER.isTraceEnabled())
+            LOGGER.trace(
                 String.format("EcuQueryRange length:%d", datalength));
         return datalength;
     }

@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2020 RomRaider.com
+ * Copyright (C) 2006-2022 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -65,23 +65,32 @@ public final class DS2LoggerConnection implements LoggerConnection {
     }
 
     @Override
+    public void open(Module module) {
+    }
+
+    @Override
     public void ecuReset(Module module, int resetCode) {
         byte[] request = protocol.constructEcuResetRequest(module, resetCode);
-        LOGGER.debug(module + " Reset Request  ---> " + asHex(request));
+        if (LOGGER.isDebugEnabled())
+            LOGGER.debug(module + " Reset Request  ---> " + asHex(request));
         byte[] response = manager.send(request);
         byte[] processedResponse = protocol.preprocessResponse(request, response, new PollingStateImpl());
-        LOGGER.debug(module + " Reset Response <--- " + asHex(processedResponse));
+        if (LOGGER.isDebugEnabled())
+            LOGGER.debug(module + " Reset Response <--- " + asHex(processedResponse));
         protocol.processEcuResetResponse(processedResponse);
     }
 
     @Override
     public void ecuInit(EcuInitCallback callback, Module module) {
         byte[] request = protocol.constructEcuInitRequest(module);
-        LOGGER.debug(module + " Init Request  ---> " + asHex(request));
+        if (LOGGER.isDebugEnabled())
+            LOGGER.debug(module + " Init Request  ---> " + asHex(request));
         byte[] response = manager.send(request);
-        LOGGER.trace(module + " Init Raw Response <--- " + asHex(response));
+        if (LOGGER.isTraceEnabled())
+            LOGGER.trace(module + " Init Raw Response <--- " + asHex(response));
         byte[] processedResponse = protocol.preprocessResponse(request, response, new PollingStateImpl());
-        LOGGER.debug(module + " Init Response <--- " + asHex(processedResponse));
+        if (LOGGER.isDebugEnabled())
+            LOGGER.debug(module + " Init Response <--- " + asHex(processedResponse));
         protocol.processEcuInitResponse(callback, processedResponse);
     }
 
@@ -94,7 +103,7 @@ public final class DS2LoggerConnection implements LoggerConnection {
         // Group the queries into common command groups
         final Map<String, Collection<EcuQuery>> groupList = getGroupList(queries);
 
-        // for each group populate the queries with results 
+        // for each group populate the queries with results
         for (String group : groupList.keySet().toArray(new String[0])) {
 
             final Collection<EcuQuery> querySet = groupList.get(group);
@@ -109,7 +118,8 @@ public final class DS2LoggerConnection implements LoggerConnection {
                     queryList.add(query);
                     request = protocol.constructReadProcedureRequest(
                             module, queryList);
-                    LOGGER.debug(String.format("Mode:%s %s Procedure request  ---> %s",
+                    if (LOGGER.isDebugEnabled())
+                        LOGGER.debug(String.format("Mode:%s %s Procedure request  ---> %s",
                             pollState.getCurrentState(), module, asHex(request)));
                     response = protocol.constructReadAddressResponse(
                             queryList, request.length);
@@ -121,13 +131,14 @@ public final class DS2LoggerConnection implements LoggerConnection {
             }
             // read data starting at address [00 SG HI LO NN] NN - number of bytes<249
             else if (groupTest.startsWith("0x060x00")) {
-                final EcuQueryRangeTest range = new EcuQueryRangeTest(querySet);
+                final EcuQueryRangeTest range = new EcuQueryRangeTest(querySet, 128);
                 final Collection<EcuQuery> newQuery = range.validate();
                 int length = range.getLength();
                 if (newQuery != null && length > 0) {
                     request = protocol.constructReadMemoryRange(
                             module, newQuery, length);
-                    LOGGER.debug(String.format("Mode:%s %s Range request  ---> %s",
+                    if (LOGGER.isDebugEnabled())
+                        LOGGER.debug(String.format("Mode:%s %s Range request  ---> %s",
                             pollState.getCurrentState(), module, asHex(request)));
                     response = protocol.constructReadMemoryRangeResponse(
                             request.length, length);
@@ -141,7 +152,8 @@ public final class DS2LoggerConnection implements LoggerConnection {
                         queryList.add(query);
                         request = protocol.constructReadMemoryRequest(
                                 module, queryList);
-                        LOGGER.debug(String.format("Mode:%s %s Memory request  ---> %s",
+                        if (LOGGER.isDebugEnabled())
+                            LOGGER.debug(String.format("Mode:%s %s Memory request  ---> %s",
                                 pollState.getCurrentState(), module, asHex(request)));
                         response = protocol.constructReadAddressResponse(
                                 queryList, request.length);
@@ -162,11 +174,14 @@ public final class DS2LoggerConnection implements LoggerConnection {
                 || groupTest.startsWith("0x0b0x04")
                 || groupTest.startsWith("0x0b0x91")
                 || groupTest.startsWith("0x0b0x92")
-                || groupTest.startsWith("0x0b0x93")) {
+                || groupTest.startsWith("0x0b0x93")
+                || groupTest.startsWith("0x0b0x94")
+                || groupTest.startsWith("0x0b0x95")) {
 
                 request = protocol.constructReadGroupRequest(
                         module, group);
-                LOGGER.debug(String.format("Mode:%s %s Group request  ---> %s",
+                if (LOGGER.isDebugEnabled())
+                    LOGGER.debug(String.format("Mode:%s %s Group request  ---> %s",
                         pollState.getCurrentState(), module, asHex(request)));
                 response = protocol.constructReadGroupResponse(
                         querySet, request.length);
@@ -190,7 +205,8 @@ public final class DS2LoggerConnection implements LoggerConnection {
                         throw new SerialCommunicationException(
                                 rb.getString("TOOLARGE"));
                     }
-                    LOGGER.debug(String.format("Mode:%s %s Load address request  ---> %s",
+                    if (LOGGER.isDebugEnabled())
+                        LOGGER.debug(String.format("Mode:%s %s Load address request  ---> %s",
                             pollState.getCurrentState(), module, asHex(request)));
                     pollState.setLastState(PollingState.State.STATE_0);
                     // Response to address list set is just an ACK
@@ -203,7 +219,8 @@ public final class DS2LoggerConnection implements LoggerConnection {
                 // Read set addresses
                 request = protocol.constructReadAddressRequest(
                 module, querySet);
-                LOGGER.debug(String.format("Mode:%s %s Read addresses request  ---> %s",
+                if (LOGGER.isDebugEnabled())
+                    LOGGER.debug(String.format("Mode:%s %s Read addresses request  ---> %s",
                         pollState.getCurrentState(), module, asHex(request)));
                 pollState.setLastState(PollingState.State.STATE_0);
                 // Response to address list read is the parameter bytes
@@ -241,14 +258,16 @@ public final class DS2LoggerConnection implements LoggerConnection {
                                 writeKey.getBytes(),
                                 writeQueries.get(writeKey)[0]);
 
-                LOGGER.debug(module + " Write Request  ---> " + asHex(request));
+                if (LOGGER.isDebugEnabled())
+                    LOGGER.debug(module + " Write Request  ---> " + asHex(request));
                 final byte[] response = manager.send(request);
                 byte[] processedResponse =
                         protocol.preprocessResponse(
                                 request,
                                 response,
                                 new PollingStateImpl());
-                LOGGER.debug(module + " Write Response <--- " + asHex(processedResponse));
+                if (LOGGER.isDebugEnabled())
+                    LOGGER.debug(module + " Write Response <--- " + asHex(processedResponse));
                 protocol.processWriteResponse(
                         writeQueries.get(writeKey), processedResponse);
             }
@@ -282,10 +301,12 @@ public final class DS2LoggerConnection implements LoggerConnection {
 
     private byte[] sendRcv(Module module, byte[] request, byte[] response, PollingState pollState) {
         manager.send(request, response, pollState);
-        LOGGER.trace(module + " Read Raw Response <--- " + asHex(response));
+        if (LOGGER.isTraceEnabled())
+            LOGGER.trace(module + " Read Raw Response <--- " + asHex(response));
         final byte[] processedResponse = protocol.preprocessResponse(
                 request, response, pollState);
-        LOGGER.debug("Mode:" + pollState.getCurrentState() + " " +
+        if (LOGGER.isDebugEnabled())
+            LOGGER.debug("Mode:" + pollState.getCurrentState() + " " +
                 module + " Response <--- " + asHex(processedResponse));
         return processedResponse;
     }

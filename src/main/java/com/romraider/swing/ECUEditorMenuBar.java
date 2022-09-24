@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2020 RomRaider.com
+ * Copyright (C) 2006-2021 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -66,13 +66,14 @@ public class ECUEditorMenuBar extends JMenuBar implements ActionListener {
             ECUEditorMenuBar.class.getName());
     private final JMenu fileMenu = new JMenu(rb.getString("FILE"));
     private final JMenuItem openImage = new JMenuItem(rb.getString("OPENIMG"));
-    private final JMenuItem openImages = new JMenuItem(rb.getString("OPENIMGS"));
+    private final JMenuItem quickSaveImage = new JMenuItem(rb.getString("SAVE"));
     private final JMenuItem saveImage = new JMenuItem(rb.getString("SAVEAS"));
     private final JMenuItem saveAsRepository = new JMenuItem(rb.getString("SAVEREPO"));
     private final JMenuItem refreshImage = new JMenuItem(rb.getString("REFRESH"));
     private final JMenuItem closeImage = new JMenuItem(rb.getString("CLOSE"));
     private final JMenuItem closeAll = new JMenuItem(rb.getString("CLOSEALL"));
     private final JMenuItem exit = new JMenuItem(rb.getString("EXIT"));
+    private final JMenuItem exportDef = new JMenuItem(rb.getString("EXPORTDEF"));
 
     private final JMenu definitionMenu = new JMenu(rb.getString("ECUDEF"));
     private final JMenuItem defManager = new JMenuItem(rb.getString("ECUDEFMAN"));
@@ -117,10 +118,6 @@ public class ECUEditorMenuBar extends JMenuBar implements ActionListener {
         openImage.addActionListener(this);
         openImage.setMnemonic('O');
 
-        //fileMenu.add(openImages);
-        //openImages.addActionListener(this);
-        //openImages.setMnemonic('I');
-
         fileMenu.add(saveImage);
         saveImage.addActionListener(this);
         saveImage.setMnemonic('S');
@@ -129,10 +126,19 @@ public class ECUEditorMenuBar extends JMenuBar implements ActionListener {
         saveAsRepository.setMnemonic('D');
         saveAsRepository.addActionListener(this);
 
+        fileMenu.add(quickSaveImage);
+        quickSaveImage.addActionListener(this);
+        quickSaveImage.setMnemonic('q');
+
         fileMenu.add(refreshImage);
         refreshImage.addActionListener(this);
         refreshImage.setMnemonic('R');
 
+        fileMenu.add(new JSeparator());
+
+        fileMenu.add(exportDef);
+        exportDef.addActionListener(this);
+       // exportDef.setMnemonic('C');
         fileMenu.add(new JSeparator());
 
         fileMenu.add(closeImage);
@@ -271,25 +277,35 @@ public class ECUEditorMenuBar extends JMenuBar implements ActionListener {
     public void updateMenu() {
         String file = getLastSelectedRomFileName();
         if ("".equals(file)) {
+        	quickSaveImage.setEnabled(false);
             saveImage.setEnabled(false);
             saveAsRepository.setEnabled(false);
+            exportDef.setEnabled(false);
             closeImage.setEnabled(false);
             //closeAll.setEnabled(false);
             romProperties.setEnabled(false);
+            quickSaveImage.setText(MessageFormat.format(rb.getString("SAVE"), file));
             saveImage.setText(rb.getString("SAVEAS"));
             saveAsRepository.setText(rb.getString("SAVEREPO"));
+            exportDef.setText(rb.getString("EXPORTDEFF"));
             compareImages.setEnabled(false);
             convertRom.setEnabled(false);
         } else {
             saveImage.setEnabled(true);
+            quickSaveImage.setEnabled(true);
             saveAsRepository.setEnabled(true);
             closeImage.setEnabled(true);
+            exportDef.setEnabled(true);
             //closeAll.setEnabled(true);
             romProperties.setEnabled(true);
+            quickSaveImage.setText(MessageFormat.format(
+                    rb.getString("QUICKSAVE"), file));
             saveImage.setText(MessageFormat.format(
                     rb.getString("SAVEFAS"), file));
             saveAsRepository.setText(MessageFormat.format(
                     rb.getString("SAVEFREPO"), file));
+            exportDef.setText(MessageFormat.format(
+                    rb.getString("EXPORTDEF"), file));
             compareImages.setEnabled(true);
             convertRom.setEnabled(true);
         }
@@ -317,7 +333,6 @@ public class ECUEditorMenuBar extends JMenuBar implements ActionListener {
             convertDecrease.setEnabled(false);
         }
 
-        openImages.setEnabled(false);
         editDefinition.setEnabled(false);
         revalidate();
     }
@@ -333,24 +348,23 @@ public class ECUEditorMenuBar extends JMenuBar implements ActionListener {
                         new DebugPanel(ex, getSettings().getSupportURL()),
                         rb.getString("EXCEPTN"), ERROR_MESSAGE);
             }
-
-        } else if (e.getSource() == openImages) {
-            try {
-                openImagesDialog();
-            } catch (Exception ex) {
-                showMessageDialog(parent,
-                        new DebugPanel(ex, getSettings().getSupportURL()),
-                        rb.getString("EXCEPTN"), ERROR_MESSAGE);
-            }
-
         } else if (e.getSource() == saveImage) {
             try {
-                this.saveImage();
+                this.saveImage(false);
             } catch (Exception ex) {
                 showMessageDialog(parent,
                         new DebugPanel(ex, getSettings().getSupportURL()),
                         rb.getString("EXCEPTN"), ERROR_MESSAGE);
-            }
+            	}
+        	}
+            else if (e.getSource() == quickSaveImage) {
+                try {
+                    this.saveImage(true);
+                } catch (Exception ex) {
+                    showMessageDialog(parent,
+                            new DebugPanel(ex, getSettings().getSupportURL()),
+                            rb.getString("EXCEPTN"), ERROR_MESSAGE);
+                }
         } else if (e.getSource() == saveAsRepository) {
             try {
                 this.saveAsRepository();
@@ -361,10 +375,10 @@ public class ECUEditorMenuBar extends JMenuBar implements ActionListener {
             }
         } else if (e.getSource() == closeImage) {
             parent.closeImage();
-
         } else if (e.getSource() == closeAll) {
             parent.closeAllImages();
-
+        } else if (e.getSource() == exportDef) {
+            parent.handleExportDefinition();
         } else if (e.getSource() == exit) {
             parent.handleExit();
             System.exit(0);
@@ -470,31 +484,22 @@ public class ECUEditorMenuBar extends JMenuBar implements ActionListener {
         ECUEditor parent = ECUEditorManager.getECUEditor();
         JFileChooser fc = new JFileChooser(SettingsManager.getSettings().getLastImageDir());
         fc.setFileFilter(new ECUImageFilter());
+        fc.setMultiSelectionEnabled(true);
         fc.setDialogTitle(rb.getString("OPENIMG"));
 
         if (fc.showOpenDialog(parent) == JFileChooser.APPROVE_OPTION) {
-            parent.openImage(fc.getSelectedFile());
-            SettingsManager.getSettings().setLastImageDir(fc.getCurrentDirectory());
-        }
-    }
-
-    public void openImagesDialog() throws Exception {
-        ECUEditor parent = ECUEditorManager.getECUEditor();
-        JFileChooser fc = new JFileChooser(getSettings().getLastImageDir());
-        fc.setFileFilter(new ECUImageFilter());
-        fc.setMultiSelectionEnabled(true);
-        fc.setDialogTitle(rb.getString("OPENIMGS"));
-
-        if(fc.showOpenDialog(parent) == JFileChooser.APPROVE_OPTION) {
             parent.openImages(fc.getSelectedFiles());
             SettingsManager.getSettings().setLastImageDir(fc.getCurrentDirectory());
         }
     }
 
-    public void saveImage() throws Exception {
-        Rom lastSelectedRom = ECUEditorManager.getECUEditor().getLastSelectedRom();
+    public void saveImage(boolean quickSave) throws Exception {
+    	Rom lastSelectedRom = ECUEditorManager.getECUEditor().getLastSelectedRom();
         if (lastSelectedRom != null) {
-            File selectedFile = getImageOutputFile();
+
+        	File selectedFile = lastSelectedRom.getFullFileName();
+        	if(!quickSave) selectedFile = getImageOutputFile();
+
             if(null != selectedFile){
                 byte[] output = lastSelectedRom.saveFile();
                 this.writeImage(output, selectedFile);
@@ -504,10 +509,21 @@ public class ECUEditorMenuBar extends JMenuBar implements ActionListener {
 
     private File getImageOutputFile() throws Exception {
         ECUEditor parent = ECUEditorManager.getECUEditor();
+
         JFileChooser fc = new JFileChooser(SettingsManager.getSettings().getLastImageDir());
         fc.setFileFilter(new ECUImageFilter());
         if (fc.showSaveDialog(parent) == JFileChooser.APPROVE_OPTION) {
             File selectedFile = fc.getSelectedFile();
+
+            //Append suffix if user didn't set anything
+            if(!selectedFile.getName().contains(".")) {
+            	Rom lastSelectedRom = ECUEditorManager.getECUEditor().getLastSelectedRom();
+            	String lastFile = lastSelectedRom.getFileName().toLowerCase();
+            	String format = ".bin";
+            	if(lastFile.endsWith(".hex")) format=".hex";
+            	selectedFile = new File(selectedFile + format);
+            }
+
             if (selectedFile.exists()) {
                 int option = showConfirmDialog(parent,
                         MessageFormat.format(
@@ -519,6 +535,7 @@ public class ECUEditorMenuBar extends JMenuBar implements ActionListener {
                     return null;
                 }
             }
+
             return selectedFile;
         }
         return null;
@@ -570,7 +587,7 @@ public class ECUEditorMenuBar extends JMenuBar implements ActionListener {
         String separator = System.getProperty("file.separator");
 
         if(null != selectedDir) {
-            for(TableTreeNode treeNode : ECUEditorManager.getECUEditor().getLastSelectedRom().getTableNodes())
+            for(TableTreeNode treeNode : ECUEditorManager.getECUEditor().getLastSelectedRom().getTableNodes().values())
             {
                 Table table = treeNode.getTable();
                 String category = table.getCategory();
@@ -595,7 +612,7 @@ public class ECUEditorMenuBar extends JMenuBar implements ActionListener {
                     try {
                         out.close();
                     } catch(Exception ex) {
-                        ;// Do Nothing.
+                        // Do Nothing.
                     }
                 }
             }

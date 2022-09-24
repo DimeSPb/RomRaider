@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2020 RomRaider.com
+ * Copyright (C) 2006-2022 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@ package com.romraider.logger.ecu.comms.manager;
 import static com.romraider.logger.ecu.comms.io.connection.LoggerConnectionFactory.getConnection;
 import static com.romraider.logger.ecu.definition.EcuDataType.EXTERNAL;
 import static com.romraider.util.ParamChecker.checkNotNull;
-import static com.romraider.util.ThreadUtil.runAsDaemon;
+import static com.romraider.util.ParamChecker.isNullOrEmpty;
 import static com.romraider.util.ThreadUtil.sleep;
 import static java.lang.System.currentTimeMillis;
 import static java.util.Collections.synchronizedList;
@@ -35,12 +35,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
+import java.util.Set;
 
 import javax.swing.SwingUtilities;
 
 import org.apache.log4j.Logger;
 
 import com.romraider.Settings;
+import com.romraider.io.j2534.api.J2534Library;
+import com.romraider.io.j2534.api.J2534LibraryLocator;
 import com.romraider.logger.ecu.comms.io.connection.LoggerConnection;
 import com.romraider.logger.ecu.comms.query.EcuInitCallback;
 import com.romraider.logger.ecu.comms.query.EcuQuery;
@@ -96,8 +99,6 @@ public final class QueryManagerImpl implements QueryManager {
         this.messageListener = messageListener;
         this.updateHandlers = dataUpdateHandlers;
         stop = true;
-        
-
     }
 
     @Override
@@ -116,11 +117,11 @@ public final class QueryManagerImpl implements QueryManager {
     @Override
     public synchronized void addQuery(String callerId, LoggerData loggerData) {
         checkNotNull(callerId, loggerData);
-        
+
         //Reset stats
-        queryCounter = 0;
-        queryStart = System.currentTimeMillis();
-        
+        queryCounter = 1;
+        queryStart = currentTimeMillis();
+
         //FIXME: This is a hack!!
         String queryId = buildQueryId(callerId, loggerData);
         if (loggerData.getDataType() == EXTERNAL) {
@@ -135,16 +136,16 @@ public final class QueryManagerImpl implements QueryManager {
     @Override
     public synchronized void removeQuery(String callerId, LoggerData loggerData) {
         checkNotNull(callerId, loggerData);
-        
+
         //Reset stats
-        queryCounter = 0;
-        queryStart = System.currentTimeMillis();
-        
+        queryCounter = 1;
+        queryStart = currentTimeMillis();
+
         removeList.add(buildQueryId(callerId, loggerData));
         if (loggerData.getDataType() != EXTERNAL) {
             pollState.setNewQuery(true);
         }
-        
+
     }
 
     @Override
@@ -161,17 +162,20 @@ public final class QueryManagerImpl implements QueryManager {
     public void run() {
         started = true;
         queryManagerThread = Thread.currentThread();
-        LOGGER.debug("QueryManager started.");
+        queryManagerThread.setName("Query Manager");
+        if (LOGGER.isDebugEnabled())
+            LOGGER.debug("QueryManager started.");
 
         try {
             stop = false;
-            
+
             while (!stop) {
                 notifyConnecting();
-                if (!settings.isLogExternalsOnly() && doEcuInit(settings.getDestinationTarget())) {
+                Module target = settings.getDestinationTarget();
 
+                if (!settings.isLogExternalsOnly() &&  doEcuInit(target)) {
                     notifyReading();
-                    runLogger(settings.getDestinationTarget());
+                    runLogger(target);
                 } else if (settings.isLogExternalsOnly()) {
                     notifyReading();
                     runLogger(null);
@@ -184,46 +188,73 @@ public final class QueryManagerImpl implements QueryManager {
         } finally {
             notifyStopped();
             messageListener.reportMessage(rb.getString("DISCONNECTED"));
-            LOGGER.debug("QueryManager stopped.");
-            
-            dataUpdater.stopUpdater();
-            try {
-				dataUpdater.join();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
+            if (LOGGER.isDebugEnabled())
+                LOGGER.debug("QueryManager stopped.");
+
+            if (dataUpdater != null) {
+                dataUpdater.stopUpdater();
+            }
         }
     }
 
     private boolean doEcuInit(Module module) {
-        try {
-            LoggerConnection connection =
-                    getConnection(settings.getLoggerProtocol(),
-                            settings.getLoggerPort(),
-                            settings.getLoggerConnectionProperties());
-            try {
-                messageListener.reportMessage(MessageFormat.format(
-                        rb.getString("SENDINIT"), module.getName()));
-                connection.ecuInit(ecuInitCallback, module);
-                messageListener.reportMessage(MessageFormat.format(
-                        rb.getString("INITDONE"), module.getName()));
-                return true;
-            } finally {
-                connection.close();
+
+        final Set<J2534Library> libraries = J2534LibraryLocator.getLibraries(
+                settings.getTransportProtocol().toUpperCase());
+
+        if (isNullOrEmpty(settings.getJ2534Device())) {
+            // No previous J2534 library selected in settings
+            for (J2534Library dll : libraries) {
+                LOGGER.info(String.format("Trying new J2534/%s connection: %s",
+                        settings.getTransportProtocol(),
+                        dll.getVendor()));
+
+                settings.setJ2534Device(dll.getLibrary());
+                if (initConnection(module, dll.getVendor())) {
+                    return true;
+                }
             }
-        } catch (Exception e) {
-            messageListener.reportMessage(MessageFormat.format(rb.getString("INITFAIL"), module.getName()));
-            logError(e);
-            return false;
         }
+        else {
+            // Try previous J2534 library from settings
+            LOGGER.info(String.format(
+                    "Trying previous J2534/%s connection: %s",
+                    settings.getTransportProtocol(),
+                    settings.getJ2534Device()));
+            if (initConnection(module, settings.getJ2534Device())) {
+                return true;
+            }
+        }
+        settings.setJ2534Device("");
+        // Finally try Serial
+        if (initConnection(module, settings.getLoggerPort())) {
+            return true;
+        }
+        return false;
     }
 
-    private void logError(Exception e) {
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Error sending init", e);
-        } else {
-            LOGGER.info("Error sending init: " + e.getMessage());
+    private boolean initConnection(final Module module, final String name) {
+        LoggerConnection connection = null;
+        boolean rv = false;
+        try {
+            messageListener.reportMessage(MessageFormat.format(
+                    rb.getString("SENDINIT"), module.getName(), name));
+            connection = getConnection(settings.getLoggerProtocol(),
+                    settings.getLoggerPort(),
+                    settings.getLoggerConnectionProperties());
+            connection.ecuInit(ecuInitCallback, module);
+            messageListener.reportMessage(MessageFormat.format(
+                    rb.getString("INITDONE"), module.getName(), name));
+            rv = true;
+        } catch (Exception e) {
+            messageListener.reportMessage(MessageFormat.format(
+                    rb.getString("INITFAIL"), module.getName()));
+            LOGGER.error("Error sending init: " + e.getMessage());
         }
+        finally {
+            if (connection != null) connection.close();
+        }
+        return rv;
     }
 
     private void runLogger(Module module) {
@@ -236,15 +267,19 @@ public final class QueryManagerImpl implements QueryManager {
         }
         TransmissionManager txManager = new TransmissionManagerImpl();
         queryStart = currentTimeMillis();
+        queryCounter = 1;
         long end = currentTimeMillis();
 
         try {
             txManager.start();
-            if(dataUpdater == null || !dataUpdater.isRunning()) {
-                dataUpdater = new AsyncDataUpdateHandler(updateHandlers);
-            	dataUpdater.start();
+
+            if(dataUpdater != null && dataUpdater.isRunning()) {
+                dataUpdater.stopUpdater();
             }
-            
+
+            dataUpdater = new AsyncDataUpdateHandler(updateHandlers);
+            dataUpdater.start();
+
             boolean lastPollState = settings.isFastPoll();
             while (!stop) {
                 pollState.setFastPoll(settings.isFastPoll());
@@ -255,9 +290,7 @@ public final class QueryManagerImpl implements QueryManager {
                         endEcuQueries(txManager);
                         pollState.setLastState(PollingState.State.STATE_0);
                     }
-                    
-                    queryStart = System.currentTimeMillis();
-                    queryCounter = 0;
+
                     messageListener.reportMessage(rb.getString("SELECTPARAMS"));
                     sleep(100L);
                 } else {
@@ -315,7 +348,7 @@ public final class QueryManagerImpl implements QueryManager {
                     while (currentTimeMillis() < end) {
                         sleep(1L);
                     }
-                    
+
                     handleQueryResponse();
                     queryCounter++;
                     messageListener.reportMessage(MessageFormat.format(
@@ -325,7 +358,9 @@ public final class QueryManagerImpl implements QueryManager {
             }
         } catch (Exception e) {
             messageListener.reportError(e);
+            sleep(500L);
         } finally {
+            messageListener.reportMessage(rb.getString("STOPPING"));
             txManager.stop();
             pollState.setCurrentState(PollingState.State.STATE_0);
             pollState.setNewQuery(true);
@@ -337,7 +372,7 @@ public final class QueryManagerImpl implements QueryManager {
         if (fileLoggerQuery != null
                 && settings.isFileLoggingControllerSwitchActive())
             ecuQueries.add(fileLoggerQuery);
-        	txManager.sendQueries(ecuQueries, pollState);
+            txManager.sendQueries(ecuQueries, pollState);
     }
 
     private void sendExternalQueries() {
@@ -359,8 +394,8 @@ public final class QueryManagerImpl implements QueryManager {
         if (settings.isFileLoggingControllerSwitchActive())
             monitor.monitorFileLoggerSwitch(fileLoggerQuery.getResponse());
         final Response response = buildResponse(queryMap.values());
-        
-        
+
+
         dataUpdater.addResponse(response);
     }
 
@@ -437,12 +472,12 @@ public final class QueryManagerImpl implements QueryManager {
             state = MessageFormat.format(
                     rb.getString("EXTERNALS"), settings.getLoggerProtocol());
         }
-        double duration = (System.currentTimeMillis() - start) / 1000.0;
+        double duration = (currentTimeMillis() - start) / 1000.0;
         String result = MessageFormat.format(
                 rb.getString("QUERYSTATS"),
                 state,
-                (count) / duration,
-                duration / (count)
+                (count / duration),
+                (duration / count)
                 );
         return result;
     }
@@ -463,7 +498,10 @@ public final class QueryManagerImpl implements QueryManager {
             @Override
             public void run() {
                 for (StatusChangeListener listener : listeners) {
-                    listener.readingData();
+                    if(settings.isLogExternalsOnly()) listener.readingDataExternal();
+                    else {
+                        listener.readingData();
+                    }
                 }
             }
         });

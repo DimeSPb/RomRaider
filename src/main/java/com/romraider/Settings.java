@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2020 RomRaider.com
+ * Copyright (C) 2006-2022 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -176,6 +176,7 @@ public class Settings implements Serializable {
     private String recentVersion = "x";
 
     private Vector<File> ecuDefinitionFiles = new Vector<File>();
+    private File lastDefDir = new File("definitions");
     private File lastImageDir = new File("images");
     private File lastRepositoryDir = new File("repositories");
     private boolean obsoleteWarning = true;
@@ -203,19 +204,21 @@ public class Settings implements Serializable {
     private Color warningColor = new Color(255, 0, 0);
     private int tableClickCount = 1; // number of clicks to open table
     private int tableClickBehavior = 0; // TableTreeNode click behavior. 0=open/close frame, 1=open/focus frame
+    private boolean sortTableTree = false; // false - Table Tree is in definition order, true - alphabetical
     private boolean colorAxis = false;
 
     private String loggerPort;
-    private String loggerPortDefault;
+    private String loggerPortDefault = "";
     private static String loggerProtocol = SSM;
-    private static String loggerDefinitionFilePath;
-    private static String loggerProfileFilePath;
+    private static String loggerDefinitionFilePath = "";
+    private static String loggerProfileFilePath = "";
     private static String loggerOutputDirPath = System.getProperty("user.home");
     private String fileLoggingControllerSwitchId = "S20"; // defogger switch by default
     private boolean fileLoggingControllerSwitchActive = false;
     private boolean fileLoggingAbsoluteTimestamp;
     private String logfileNameText;
     private boolean logExternalsOnly;
+    private boolean autoConnectOnStartup = true;
     private static String userLocale = SYSTEM_NUMFORMAT;
 
     private Dimension loggerWindowSize = new Dimension(1000, 600);
@@ -233,7 +236,7 @@ public class Settings implements Serializable {
     private boolean fastPoll = true;
     private double loggerDividerLocation = 400;
     private String loggerDebuggingLevel = "info";
-    private static String j2534Device;
+    private static String j2534Device = "";
     private static String transportProtocol = ISO9141;
 
     private String tableClipboardFormat = DEFAULT_CLIPBOARD_FORMAT; // Currently 2 options.  Default and Airboy. Custom is not hooked up.
@@ -262,17 +265,17 @@ public class Settings implements Serializable {
     /**
      * Gear selection for selected car on Dyno tab
      */
-    private String selectedGear = "";
+    private String selectedGear = "3";
 
     /**
      * Throttle threshold value to indicate WOT on Dyno tab
      */
-    private String tpsThreshold = "";
+    private String tpsThreshold = "98";
 
     /**
      * Throttle value units % or VDC on Dyno tab, not all cars support both
      */
-    private String tpsThresholdPID = "";
+    private String tpsThresholdPID = "%";
 
     /**
      * Sets if we search for the ELM327 on startup (small delay)
@@ -320,6 +323,14 @@ public class Settings implements Serializable {
 
     public void setLastImageDir(File lastImageDir) {
         this.lastImageDir = lastImageDir;
+    }
+
+    public File getLastDefinitionDir() {
+        return lastDefDir;
+    }
+
+    public void setLastDefinitionDir(File lastDefDir) {
+        this.lastDefDir = lastDefDir;
     }
 
     public File getLastRepositoryDir() {
@@ -556,6 +567,14 @@ public class Settings implements Serializable {
 
     public void setLoggerPortDefault(String loggerPortDefault) {
         this.loggerPortDefault = loggerPortDefault;
+    }
+
+    public void setAutoConnectOnStartup(boolean value) {
+    	autoConnectOnStartup = value;
+    }
+
+    public boolean getAutoConnectOnStartup() {
+    	return autoConnectOnStartup;
     }
 
     public void setLoggerProtocol(String protocol) {
@@ -948,11 +967,11 @@ public class Settings implements Serializable {
     public String getDynoThreshold() {
         return this.tpsThreshold;
     }
-    
+
 	public boolean getElm327Enabled() {
 		return this.searchElm327;
 	}
-	
+
     public void setSelectedCar(final String value) {
         this.selectedCar = value;
     }
@@ -970,8 +989,14 @@ public class Settings implements Serializable {
     }
 
 	public void setElm327Enabled(Boolean value) {
-		this.searchElm327 = value;			
+		this.searchElm327 = value;
 	}
 
+    public void setTableTreeSorted(Boolean value) {
+        this.sortTableTree = value;
+    }
 
+    public boolean isTableTreeSorted() {
+        return this.sortTableTree;
+    }
 }

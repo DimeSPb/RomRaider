@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2020 RomRaider.com
+ * Copyright (C) 2006-2021 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 
 package com.romraider.swing;
 
+import java.awt.Cursor;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.ResourceBundle;
@@ -33,7 +34,6 @@ import javax.swing.table.TableColumn;
 import com.romraider.Settings;
 import com.romraider.maps.Scale;
 import com.romraider.maps.Table;
-import com.romraider.maps.TableSwitch;
 import com.romraider.util.ResourceUtil;
 
 public class TablePropertyPanel extends javax.swing.JPanel {
@@ -52,10 +52,6 @@ public class TablePropertyPanel extends javax.swing.JPanel {
     if (Table.TableType.SWITCH == table.getType()) {
         dim = 1;
         storageSize.setText("switch");
-        if(table.getClass() == TableSwitch.class) {
-            scrollPane.setViewportView(populateScalesTable(
-                    ((TableSwitch) table).getSwitchStates()));
-        }
     }
     else {
         if (Settings.STORAGE_TYPE_FLOAT == table.getStorageType()) {
@@ -128,7 +124,7 @@ public class TablePropertyPanel extends javax.swing.JPanel {
         userLevel = new javax.swing.JLabel();
         scrollPane = new JScrollPane();
         logIDscrollPane = new JScrollPane();
-        
+              
         setAutoscrolls(true);
         setFont(new java.awt.Font("Tahoma", 0, 12));
         setInheritsPopupMenu(true);
@@ -219,14 +215,13 @@ public class TablePropertyPanel extends javax.swing.JPanel {
         description.setBackground(new java.awt.Color(236, 233, 216));
         description.setColumns(20);
         description.setEditable(false);
+        description.setCursor(new Cursor(Cursor.TEXT_CURSOR));
         description.setFont(new java.awt.Font("Tahoma", 0, 11));
         description.setLineWrap(true);
-        description.setRows(5);
         description.setText("Description");
         description.setWrapStyleWord(true);
         description.setBorder(null);
         description.setOpaque(false);
-        description.setRequestFocusEnabled(false);
         jScrollPane1.setViewportView(description);
 
         GroupLayout jPanel3Layout = new GroupLayout(jPanel3);
@@ -329,12 +324,6 @@ public class TablePropertyPanel extends javax.swing.JPanel {
         return createScalesTable(scalesModel);
     }
 
-    private JTable populateScalesTable(Map<String, byte[]> switchStates) {
-        final SwitchStateTableModel scalesModel = new SwitchStateTableModel();
-        scalesModel.setScalesList(switchStates);
-        return createScalesTable(scalesModel);
-    }
-
     private JTable createScalesTable(DefaultTableModel tableModel) {
         final JTable table = new JTable(tableModel);
         table.setAutoCreateRowSorter(false);
@@ -349,7 +338,7 @@ public class TablePropertyPanel extends javax.swing.JPanel {
         final String[] paramEntries = logParams.split(", ");
         for (String entry : paramEntries) {
             final String[] entries = entry.split(":");
-            if(!paramMap.containsKey(entries[0])){
+            if(entries.length > 0 && !paramMap.containsKey(entries[0])){
                 paramMap.put(entries[0], entries.length > 1 ? entries[1] : "n/a");
             }
         }

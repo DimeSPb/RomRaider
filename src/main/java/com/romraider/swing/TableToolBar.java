@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2020 RomRaider.com
+ * Copyright (C) 2006-2022 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -69,7 +69,10 @@ import com.romraider.maps.DataCell;
 import com.romraider.maps.Scale;
 import com.romraider.maps.Table;
 import com.romraider.maps.Table1D;
+import com.romraider.maps.Table1DView;
 import com.romraider.maps.Table3D;
+import com.romraider.maps.TableView;
+import com.romraider.maps.UserLevelException;
 import com.romraider.util.NumberUtil;
 import com.romraider.util.ResourceUtil;
 import com.romraider.util.SettingsManager;
@@ -231,7 +234,12 @@ public class TableToolBar extends JToolBar implements MouseListener, ItemListene
                 } catch (PropertyVetoException ex) {
                 }
                 frame.requestFocusInWindow();
-                setValue(frame.getTable());
+
+                try {
+                    setValue(frame.getTable());
+                } catch (UserLevelException e1) {
+                    e1.printStackTrace();
+                }
             }
         };
 
@@ -260,6 +268,7 @@ public class TableToolBar extends JToolBar implements MouseListener, ItemListene
         setValue.getInputMap().put(enter, "enterAction");
 
         this.setEnabled(true);
+        toggleTableToolBar(null);
     }
 
     public void updateIcons() {
@@ -281,20 +290,6 @@ public class TableToolBar extends JToolBar implements MouseListener, ItemListene
         return imageIcon;
     }
 
-    public Table getTable() {
-        JInternalFrame frame = ECUEditorManager.getECUEditor().getRightPanel().getSelectedFrame();
-        if(null == frame) {
-            return null;
-        }
-
-        if( !(frame instanceof TableFrame) ) {
-            return null;
-        }
-
-
-        return ((TableFrame)frame).getTable();
-    }
-
     @Override
     public void setBorder(Border border) {
         if(SettingsManager.getSettings().isShowTableToolbarBorder()) {
@@ -304,42 +299,39 @@ public class TableToolBar extends JToolBar implements MouseListener, ItemListene
         }
     }
 
-    public void updateTableToolBar() {
-        this.updateTableToolBar(getTable());
+    private void saveFineCourseValuesInTable(Table t) {
+        if(t == null || t.getCurrentScale() == null) return;
+
+        double incCoarse = 0;
+        double incFine = 0;
+
+        try {
+            //Commit the value which was typed (if field still has focus)
+            incrementByCoarse.commitEdit();
+            incrementByFine.commitEdit();
+
+            incCoarse = Double.parseDouble(String.valueOf(incrementByCoarse.getValue()));
+            incFine = Double.parseDouble(String.valueOf(incrementByFine.getValue()));
+        }
+        //Current value in the inc/dec field are not valid
+        catch(ParseException e) {
+            return;
+        }
+        //Should not happen since ParseException would happen before that
+        catch(NumberFormatException e) {
+            return;
+        }
+
+        //Save current inc/dec values in table before we switch
+        if(incCoarse!=0 && incFine != 0) {
+            t.updateIncrementDecrementValues(incFine,incCoarse);
+        }
     }
 
-    
-    private void saveFineCourseValuesInTable(Table t) {
-    	if(t == null || t.getCurrentScale() == null) return;
-    	
-    	double incCoarse = 0;
-    	double incFine = 0;
-    	
-    	try {
-    		//Commit the value which was typed (if field still has focus)
-    		incrementByCoarse.commitEdit();
-    		incrementByFine.commitEdit();
-    		
-	        incCoarse = Double.parseDouble(String.valueOf(incrementByCoarse.getValue()));
-	        incFine = Double.parseDouble(String.valueOf(incrementByFine.getValue()));
-    	}
-    	//Current value in the inc/dec field are not valid
-    	catch(ParseException e) {
-    		return; 
-    	}
-    	//Should not happen since ParseException would happen before that
-    	catch(NumberFormatException e) {
-    		return; 
-    	}
-    	  	
-	    //Save current inc/dec values in table before we switch
-    	if(incCoarse!=0 && incFine != 0) {
-    		t.updateIncrementDecrementValues(incFine,incCoarse);		    
-    	}
-    	
-    }
-    	
     public void updateTableToolBar(Table selectedTable) {
+        //Select the parent Table always instead?
+        //if(selectedTable instanceof Table1D)selectedTable = ((Table1D)selectedTable).getAxisParent();
+
         if(selectedTable == null  && this.selectedTable == null) {
             // Skip if the table is the same to avoid multiple updates
             return;
@@ -353,7 +345,6 @@ public class TableToolBar extends JToolBar implements MouseListener, ItemListene
 
         //Save the current inc/dec values in the table
         saveFineCourseValuesInTable(this.selectedTable);
-        
         this.selectedTable = selectedTable;
 
         setBorder(toolbarBorder);
@@ -367,7 +358,7 @@ public class TableToolBar extends JToolBar implements MouseListener, ItemListene
 
         updateToolbarIncrementDecrementValues();
 
-        this.overlayLog.setSelected(selectedTable.getOverlayLog());
+        this.overlayLog.setSelected(selectedTable.getTableView().getOverlayLog());
         this.enable3d.setEnabled(selectedTable.getType() == Table.TableType.TABLE_3D);
 
         setScales(selectedTable.getScales());
@@ -376,7 +367,7 @@ public class TableToolBar extends JToolBar implements MouseListener, ItemListene
         {
             this.scaleSelection.setSelectedItem("Default");
         } else {
-            this.scaleSelection.setSelectedItem(selectedTable.getCurrentScale().getName());
+            this.scaleSelection.setSelectedItem(selectedTable.getCurrentScale().getCategory());
         }
 
         toggleTableToolBar(selectedTable);
@@ -411,7 +402,7 @@ public class TableToolBar extends JToolBar implements MouseListener, ItemListene
         } else {
             if(currentTable instanceof Table1D) {
                 Table1D cur1DTable = (Table1D)currentTable;
-                if(cur1DTable.isAxis()) {
+                if(cur1DTable.getTableView() != null && (((Table1DView)(cur1DTable.getTableView())).isAxis())) {
                     newTitle = cur1DTable.getAxisParent().getName() + " ("+ cur1DTable.getName() +")";
                 } else {
                     newTitle = currentTable.getName();
@@ -501,7 +492,7 @@ public class TableToolBar extends JToolBar implements MouseListener, ItemListene
         scaleSelection.removeAllItems();
 
         for (Scale scale : scales) {
-            scaleSelection.addItem(scale.getName());
+            scaleSelection.addItem(scale.getCategory());
         }
 
         // and put it back
@@ -515,33 +506,37 @@ public class TableToolBar extends JToolBar implements MouseListener, ItemListene
         {
             return;
         }
-
-        if (e.getSource() == incrementCoarse) {
-            incrementCoarse(curTable);
-        } else if (e.getSource() == decrementCoarse) {
-            decrementCoarse(curTable);
-        } else if (e.getSource() == enable3d) {
-            enable3d(curTable);
-        } else if (e.getSource() == incrementFine) {
-            incrementFine(curTable);
-        } else if (e.getSource() == decrementFine) {
-            decrementFine(curTable);
-        } else if (e.getSource() == multiply) {
-            multiply(curTable);
-        } else if (e.getSource() == setValue) {
-            setValue(curTable);
-        } else if (e.getSource() == colorCells) {
-            colorCells(curTable);
-        } else if (e.getSource() == refreshCompare) {
-            refreshCompare(curTable);
+        try {
+            if (e.getSource() == incrementCoarse) {
+                incrementCoarse(curTable);
+            } else if (e.getSource() == decrementCoarse) {
+                decrementCoarse(curTable);
+            } else if (e.getSource() == enable3d) {
+                enable3d(curTable);
+            } else if (e.getSource() == incrementFine) {
+                incrementFine(curTable);
+            } else if (e.getSource() == decrementFine) {
+                decrementFine(curTable);
+            } else if (e.getSource() == multiply) {
+                multiply(curTable);
+            } else if (e.getSource() == setValue) {
+                setValue(curTable);
+            } else if (e.getSource() == colorCells) {
+                colorCells(curTable);
+            } else if (e.getSource() == refreshCompare) {
+                refreshCompare(curTable);
+            }
+        }
+        catch(UserLevelException ex) {
+            TableView.showInvalidUserLevelPopup(ex);
         }
     }
 
-    public void setValue(Table currentTable) {
+    public void setValue(Table currentTable) throws UserLevelException {
         currentTable.setRealValue(setValueText.getText());
     }
 
-    public void multiply() {
+    public void multiply() throws UserLevelException {
         Table curTable = getSelectedTable();
         if(null == curTable) {
             return;
@@ -549,7 +544,7 @@ public class TableToolBar extends JToolBar implements MouseListener, ItemListene
         multiply(curTable);
     }
 
-    public void multiply(Table currentTable) {
+    public void multiply(Table currentTable) throws UserLevelException {
         try{
             currentTable.multiply(NumberUtil.doubleValue(setValueText.getText()));
         }catch(ParseException nex) {
@@ -557,7 +552,7 @@ public class TableToolBar extends JToolBar implements MouseListener, ItemListene
         }
     }
 
-    public void incrementFine() {
+    public void incrementFine() throws NumberFormatException, UserLevelException {
         Table curTable = getSelectedTable();
         if(null == curTable) {
             return;
@@ -565,11 +560,11 @@ public class TableToolBar extends JToolBar implements MouseListener, ItemListene
         incrementFine(curTable);
     }
 
-    public void incrementFine(Table currentTable) {
+    public void incrementFine(Table currentTable) throws NumberFormatException, UserLevelException {
         currentTable.increment(Double.parseDouble(String.valueOf(incrementByFine.getValue())));
     }
 
-    public void decrementFine() {
+    public void decrementFine() throws NumberFormatException, UserLevelException {
         Table curTable = getSelectedTable();
         if(null == curTable) {
             return;
@@ -577,11 +572,11 @@ public class TableToolBar extends JToolBar implements MouseListener, ItemListene
         decrementFine(curTable);
     }
 
-    public void decrementFine(Table currentTable) {
+    public void decrementFine(Table currentTable) throws NumberFormatException, UserLevelException {
         currentTable.increment(0 - Double.parseDouble(String.valueOf(incrementByFine.getValue())));
     }
 
-    public void incrementCoarse() {
+    public void incrementCoarse() throws NumberFormatException, UserLevelException {
         Table curTable = getSelectedTable();
         if(null == curTable) {
             return;
@@ -589,11 +584,11 @@ public class TableToolBar extends JToolBar implements MouseListener, ItemListene
         incrementCoarse(curTable);
     }
 
-    public void incrementCoarse(Table currentTable) {
+    public void incrementCoarse(Table currentTable) throws NumberFormatException, UserLevelException {
         currentTable.increment(Double.parseDouble(String.valueOf(incrementByCoarse.getValue())));
     }
 
-    public void decrementCoarse() {
+    public void decrementCoarse() throws NumberFormatException, UserLevelException {
         Table curTable = getSelectedTable();
         if(null == curTable) {
             return;
@@ -601,7 +596,7 @@ public class TableToolBar extends JToolBar implements MouseListener, ItemListene
         decrementCoarse(curTable);
     }
 
-    public void decrementCoarse(Table currentTable) {
+    public void decrementCoarse(Table currentTable) throws NumberFormatException, UserLevelException {
         currentTable.increment(0 - Double.parseDouble(String.valueOf(incrementByCoarse.getValue())));
     }
 
@@ -684,7 +679,8 @@ public class TableToolBar extends JToolBar implements MouseListener, ItemListene
             //***********
             /*minV = 0.0;
             maxV = 13.01;*/
-            LOGGER.debug("Scale: " + maxV + COMMA + minV);
+            if (LOGGER.isDebugEnabled())
+                LOGGER.debug("Scale: " + maxV + COMMA + minV);
             //***********
 
             Graph3dFrameManager.openGraph3dFrame(graphValues, minV, maxV, xValues, yValues, xLabel, yLabel, zLabel, currentTable.getName());
@@ -755,15 +751,17 @@ public class TableToolBar extends JToolBar implements MouseListener, ItemListene
         if (e.getSource() == scaleSelection) {
             // scale changed
             try {
-
-                curTable.setScaleByName((String)scaleSelection.getSelectedItem());
+                curTable.setScaleByCategory((String)scaleSelection.getSelectedItem());
                 updateToolbarIncrementDecrementValues();
             } catch (NameNotFoundException e1) {
                 e1.printStackTrace();
             }
         } else if (e.getSource() == overlayLog) {
             // enable/disable log overlay and live data display
-            curTable.setOverlayLog(overlayLog.isSelected());
+            curTable.getTableView().setOverlayLog(overlayLog.isSelected());
+
+            if(!overlayLog.isSelected())
+            	curTable.getTableView().clearLiveDataTrace();
         }
     }
 
@@ -777,7 +775,7 @@ public class TableToolBar extends JToolBar implements MouseListener, ItemListene
 
         if (e.getSource() == clearOverlay) {
             // clear log overlay
-            curTable.clearLiveDataTrace();
+            curTable.getTableView().clearLiveDataTrace();
         }
     }
 
@@ -802,7 +800,11 @@ public class TableToolBar extends JToolBar implements MouseListener, ItemListene
             table3d.selectCellAt(x, table3d.getSizeY() - z - 1);
 
             //Set the value
-            table3d.setRealValue(String.valueOf(value));
+            try {
+                table3d.setRealValue(String.valueOf(value));
+            } catch (UserLevelException e) {
+                e.printStackTrace();
+            }
         }
     }
 

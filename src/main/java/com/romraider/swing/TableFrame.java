@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2020 RomRaider.com
+ * Copyright (C) 2006-2022 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,9 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.text.MessageFormat;
 import java.util.ResourceBundle;
+import java.util.Vector;
 
+import javax.swing.Icon;
 import javax.swing.JInternalFrame;
 import javax.swing.JMenu;
 import javax.swing.JOptionPane;
@@ -39,6 +41,8 @@ import com.romraider.editor.ecu.ECUEditorManager;
 import com.romraider.logger.ecu.ui.handler.table.TableUpdateHandler;
 import com.romraider.maps.Rom;
 import com.romraider.maps.Table;
+import com.romraider.maps.TableView;
+import com.romraider.maps.UserLevelException;
 import com.romraider.util.ResourceUtil;
 
 public class TableFrame extends JInternalFrame implements InternalFrameListener, ActionListener {
@@ -46,14 +50,21 @@ public class TableFrame extends JInternalFrame implements InternalFrameListener,
     private static final long serialVersionUID = -2651279694660392351L;
     private static final ResourceBundle rb = new ResourceUtil().getBundle(
             TableFrame.class.getName());
-    private final Table table;
+    private TableView tableView;
     private TableMenuBar tableMenuBar = null;
 
-    public TableFrame(String title, Table table) {
+    public TableFrame(String title, TableView tableView) {
         super(title, true, true);
-        this.table = table;
-        add(table);
-        setFrameIcon(null);
+        this.tableView = tableView;
+        Table t = tableView.getTable();
+
+        Icon icon = RomCellRenderer.getIconForTable(t);
+        setFrameIcon(icon);
+
+        t.setTableFrame(this);
+        add(tableView);
+        tableView.repaint();
+
         setBorder(createBevelBorder(0));
         if (System.getProperty("os.name").startsWith("Mac OS"))
             putClientProperty("JInternalFrame.isPalette", true);
@@ -64,50 +75,55 @@ public class TableFrame extends JInternalFrame implements InternalFrameListener,
         addInternalFrameListener(this);
     }
 
-    @Override
-    public void internalFrameActivated(InternalFrameEvent e) {
+    public void RegisterTable() {
+        TableUpdateHandler.getInstance().registerTable(this.getTable());
+    }
+
+    public void DeregisterTable() {
+        TableUpdateHandler.getInstance().deregisterTable(this.getTable());
+    }
+
+    private void updateToolbar(Table t) {
         ECUEditor parent = getEditor();
-        parent.getTableToolBar().updateTableToolBar();
+        parent.getTableToolBar().updateTableToolBar(t);
         parent.getToolBar().updateButtons();
         parent.getEditorMenuBar().updateMenu();
     }
 
     @Override
-    public void internalFrameOpened(InternalFrameEvent e) {
-        RegisterTable();
-    }
-
-    @Override
-    public void internalFrameClosing(InternalFrameEvent e) {
-        TableUpdateHandler.getInstance().deregisterTable(this.getTable());
-    }
-
-    @Override
-    public void internalFrameClosed(InternalFrameEvent e) {
-        getEditor().getTableToolBar().updateTableToolBar();
-    }
-
-    @Override
-    public void internalFrameIconified(InternalFrameEvent e) {
-        ;
-    }
-
-    @Override
-    public void internalFrameDeiconified(InternalFrameEvent e) {
-        ;
+    public void internalFrameActivated(InternalFrameEvent e) {
+    	updateToolbar(getTable());
     }
 
     @Override
     public void internalFrameDeactivated(InternalFrameEvent e) {
-        getEditor().getTableToolBar().updateTableToolBar();
+    	updateToolbar(null);
     }
 
-    public void RegisterTable() {
-        TableUpdateHandler.getInstance().registerTable(this.getTable());
-    }
+    @Override
+    public void internalFrameClosing(InternalFrameEvent e) {}
+
+    @Override
+    public void internalFrameOpened(InternalFrameEvent e) {}
+
+    @Override
+    public void internalFrameClosed(InternalFrameEvent e) {}
+    @Override
+    public void internalFrameIconified(InternalFrameEvent e) {}
+    @Override
+    public void internalFrameDeiconified(InternalFrameEvent e) {}
 
     public Table getTable() {
-        return table;
+    	if(tableView == null) return null;
+
+        return tableView.getTable();
+    }
+    public TableView getTableView() {
+        return tableView;
+    }
+
+    public void setTableView(TableView v) {
+    	tableView = v;
     }
 
     public ECUEditor getEditor() {
@@ -121,122 +137,133 @@ public class TableFrame extends JInternalFrame implements InternalFrameListener,
     @Override
     public void actionPerformed(ActionEvent e) {
         TableMenuBar menu = getTableMenuBar();
+        Table t = getTable();
 
+        try {
         if (e.getSource() == menu.getUndoAll()) {
-            getTable().undoAll();
+            t.undoAll();
 
         } else if (e.getSource() == menu.getRevert()) {
-            getTable().setRevertPoint();
+            t.setRevertPoint();
 
         } else if (e.getSource() == menu.getUndoSel()) {
-            getTable().undoSelected();
+            getTableView().undoSelected();
 
         } else if (e.getSource() == menu.getClose()) {
             ECUEditorManager.getECUEditor().removeDisplayTable(this);
 
         } else if (e.getSource() == menu.getTableProperties()) {
-            JOptionPane.showMessageDialog(getTable(),
-                    new TablePropertyPanel(getTable()),
+            JOptionPane.showMessageDialog(getTableView(),
+                    new TablePropertyPanel(t),
                     MessageFormat.format(
                             rb.getString("TBLPROP"), getTable().getName()),
                     JOptionPane.INFORMATION_MESSAGE);
 
         } else if (e.getSource() == menu.getCopySel()) {
-            getTable().copySelection();
+            getTableView().copySelection();
 
         } else if (e.getSource() == menu.getCopyTable()) {
-            getTable().copyTable();
+            getTableView().copyTable();
 
         } else if (e.getSource() == menu.getPaste()) {
-            getTable().paste();
+            getTableView().paste();
 
         } else if (e.getSource() == menu.getCompareOff()) {
-            getTable().setCompareTable(null);
-            getTable().setCompareValueType(Settings.DataType.BIN);
+            t.setCompareTable(null);
+            t.setCompareValueType(Settings.DataType.BIN);
             getTableMenuBar().getCompareToBin().setSelected(true);
 
         } else if (e.getSource() == menu.getCompareAbsolute()) {
-            getTable().setCompareDisplay(Settings.CompareDisplay.ABSOLUTE);
+            getTableView().setCompareDisplay(Settings.CompareDisplay.ABSOLUTE);
 
         } else if (e.getSource() == menu.getComparePercent()) {
-            getTable().setCompareDisplay(Settings.CompareDisplay.PERCENT);
+            getTableView().setCompareDisplay(Settings.CompareDisplay.PERCENT);
 
         } else if (e.getSource() == menu.getCompareOriginal()) {
-            getTable().setCompareValueType(Settings.DataType.ORIGINAL);
+            t.setCompareValueType(Settings.DataType.ORIGINAL);
             getTableMenuBar().getCompareToOriginal().setSelected(true);
-            compareByTable(getTable());
+            compareByTable(t);
 
         } else if (e.getSource() == menu.getCompareMap()) {
             JTableChooser chooser = new JTableChooser();
-            Table selectedTable = chooser.showChooser(getTable());
+            Table selectedTable = chooser.showChooser(t);
             if(null != selectedTable) {
                 compareByTable(selectedTable);
             }
+            else {
+                // User closed/cancelled Chooser window
+                menu.getCompareOff().setSelected(true);
+            }
 
         } else if (e.getSource() instanceof TableMenuItem) {
-            Table selectedTable = findSimilarTable((TableMenuItem)e.getSource());
+            Table selectedTable = ((TableMenuItem) e.getSource()).getTable();
             if(null != e.getSource()) {
                 compareByTable(selectedTable);
             }
 
         } else if (e.getSource() == menu.getCompareToOriginal()) {
-            getTable().setCompareValueType(Settings.DataType.ORIGINAL);
-            getTable().refreshCompare();
+            t.setCompareValueType(Settings.DataType.ORIGINAL);
+            t.refreshCompare();
 
         } else if (e.getSource() == menu.getCompareToBin()) {
-            getTable().setCompareValueType(Settings.DataType.BIN);
-            getTable().refreshCompare();
+            t.setCompareValueType(Settings.DataType.BIN);
+            t.refreshCompare();
 
         } else if (e.getSource() == menu.getInterp()) {
             getTable().interpolate();
 
         } else if (e.getSource() == menu.getVertInterp()) {
-            getTable().verticalInterpolate();
+        	getTable().verticalInterpolate();
 
         } else if (e.getSource() == menu.getHorizInterp()) {
-            getTable().horizontalInterpolate();
+        	getTable().horizontalInterpolate();
+        }
+        }
+        catch(UserLevelException ex) {
+        	TableView.showInvalidUserLevelPopup(ex);
         }
     }
 
     public void compareByTable(Table selectedTable) {
+    	Table t = getTable();
+
         if(null == selectedTable) {
             return;
         }
-        getTable().setCompareTable(selectedTable);
-        ECUEditorManager.getECUEditor().getTableToolBar().updateTableToolBar(getTable());
-        getTable().populateCompareValues(selectedTable);
+
+        t.setCompareTable(selectedTable);
+        ECUEditorManager.getECUEditor().getTableToolBar().updateTableToolBar(t);
+        t.populateCompareValues(selectedTable);
     }
 
     public void refreshSimilarOpenTables() {
         JMenu similarTables =  getTableMenuBar().getSimilarOpenTables();
         similarTables.removeAll();
 
-        for(Rom rom : ECUEditorManager.getECUEditor().getImages()) {
-            for(TableTreeNode tableNode : rom.getTableNodes()) {
-                if(tableNode.getTable().getName().equalsIgnoreCase(getTable().getName())) {
-                    JRadioButtonMenuItem similarTable = new TableMenuItem(rom.getFileName());
-                    similarTable.setToolTipText(tableNode.getFrame().getTable().getName());
+        Vector<Rom> images = ECUEditorManager.getECUEditor().getImages();
+        boolean addedTable = false;
+
+        if(images.size() > 1) {
+	        for(Rom rom : images) {
+	        	if (rom == getTable().getRom()) continue;
+	        	if(rom.getTableNodes().containsKey(getTable().getName().toLowerCase())) {
+	        		TableTreeNode tableNode = rom.getTableNodes().get(getTable().getName().toLowerCase());
+                    JRadioButtonMenuItem similarTable = new TableMenuItem(tableNode.getTable());
+                    similarTable.setToolTipText(tableNode.getTable().getName());
                     similarTable.addActionListener(this);
                     similarTables.add(similarTable);
-                    break;
-                }
-            }
+                    addedTable = true;
+                    continue;
+	                }
+	            }
         }
 
-        getTableMenuBar().initCompareGroup();
+        if(addedTable)
+        	similarTables.setEnabled(true);
+        else
+        	similarTables.setEnabled(false);
+
+        getTableMenuBar().initCompareGroup(this);
         getTableMenuBar().repaint();
-    }
-
-    private Table findSimilarTable(TableMenuItem menuItem) {
-        for(Rom rom : ECUEditorManager.getECUEditor().getImages()) {
-            if(menuItem.getText().equalsIgnoreCase(rom.getFileName())) {
-                for(TableTreeNode treeNode : rom.getTableNodes()) {
-                    if(menuItem.getToolTipText().equalsIgnoreCase(treeNode.getFrame().getTable().getName())) {
-                        return treeNode.getFrame().getTable();
-                    }
-                }
-            }
-        }
-        return null;
     }
 }

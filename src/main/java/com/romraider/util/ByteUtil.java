@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2020 RomRaider.com
+ * Copyright (C) 2006-2021 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -143,6 +143,10 @@ public final class ByteUtil {
     	
     	return counter;
     }
+    
+    public static int bitToMask(int bit) {
+    	return  1 << bit;
+    }
 
     private static int[] computeFailure(byte[] pattern) {
         int[] failure = new int[pattern.length];
@@ -159,5 +163,34 @@ public final class ByteUtil {
         return failure;
     }
     
-    
+	//Java 9 Method
+	public static int parseUnsignedInt(String s, int radix) throws NumberFormatException {
+	    if (s == null)  {
+	        throw new NumberFormatException("null");
+	    }
+	
+	    int len = s.length();
+	    if (len > 0) {
+	        char firstChar = s.charAt(0);
+	        if (firstChar == '-') {
+	            throw new
+	                NumberFormatException(String.format("Illegal leading minus sign " +
+	                                                   "on unsigned string %s.", s));
+	        } else {
+	            if (len <= 5 ||(radix == 10 && len <= 9) ) {
+	                return Integer.parseInt(s, radix);
+	            } else {
+	                long ell = Long.parseLong(s, radix);
+	                if ((ell & 0xffffffff00000000L) == 0) {
+	                    return (int) ell;
+	                } else {
+	                    throw new
+	                        NumberFormatException(String.format("String value %s exceeds " + "range of unsigned int.", s));
+	                }
+	            }
+	        }
+	    } else {
+	    	throw new NumberFormatException(s);
+	    }
+	}  
 }

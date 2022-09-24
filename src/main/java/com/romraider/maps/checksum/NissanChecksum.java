@@ -29,7 +29,7 @@ import com.romraider.Settings;
 import com.romraider.util.HexUtil;
 
 /**
- * This class provides common methods implemented by different 
+ * This class provides common methods implemented by different
  * checksum calculation type classes.
  */
     abstract class NissanChecksum implements ChecksumManager {
@@ -43,6 +43,7 @@ import com.romraider.util.HexUtil;
         protected final Map<String, Integer> results = new HashMap<String, Integer>();
         protected Calculator calculator;
 
+    @Override
     public void configure(Map<String, String> vars) {
         range.put(START, HexUtil.hexToInt(vars.get(START)));
         range.put(END, HexUtil.hexToInt(vars.get(END)));
@@ -50,17 +51,32 @@ import com.romraider.util.HexUtil;
         range.put(XORLOC, HexUtil.hexToInt(vars.get(XORLOC)));
     }
 
-    public boolean validate(byte[] binData) {
+    @Override
+    public int getNumberOfChecksums() {
+    	return 2;
+    }
+
+    @Override
+    public int validate(byte[] binData) {
         calculator.calculate(range, binData, results);
-        final boolean valid =
-                (results.get(SUMT) == (int)parseByteValue(binData, Settings.Endian.BIG, range.get(SUMLOC), 4, true)) &&
-                (results.get(XORT) == (int)parseByteValue(binData, Settings.Endian.BIG, range.get(XORLOC), 4, true));
+        int valid = 0;
+
+        if(results.get(SUMT) == (int)parseByteValue(binData, Settings.Endian.BIG, range.get(SUMLOC), 4, true)) {
+        	valid++;
+        }
+
+        if((results.get(XORT) == (int)parseByteValue(binData, Settings.Endian.BIG, range.get(XORLOC), 4, true))) {
+        	valid++;
+        }
+
         return valid;
     }
 
-    public void update(byte[] binData) {
+    @Override
+    public int update(byte[] binData) {
         calculator.calculate(range, binData, results);
         System.arraycopy(parseIntegerValue(results.get(SUMT), Settings.Endian.BIG, 4), 0, binData, range.get(SUMLOC), 4);
         System.arraycopy(parseIntegerValue(results.get(XORT), Settings.Endian.BIG, 4), 0, binData, range.get(XORLOC), 4);
+        return getNumberOfChecksums();
     }
 }

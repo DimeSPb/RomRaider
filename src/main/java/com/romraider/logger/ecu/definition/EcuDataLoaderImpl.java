@@ -25,6 +25,8 @@ import com.romraider.logger.ecu.definition.xml.EcuDefinitionHandler;
 import com.romraider.logger.ecu.definition.xml.LoggerDefinitionHandler;
 import com.romraider.logger.ecu.exception.ConfigurationException;
 import com.romraider.util.ResourceUtil;
+import com.romraider.util.SettingsManager;
+import com.romraider.Settings;
 
 import static com.romraider.util.ParamChecker.checkNotNull;
 import static com.romraider.util.ParamChecker.checkNotNullOrEmpty;
@@ -62,7 +64,7 @@ public final class EcuDataLoaderImpl implements EcuDataLoader {
                     new FileInputStream(ecuDefsFile));
             try {
                 EcuDefinitionHandler handler = new EcuDefinitionHandler(ecuDefsFile);
-                getSaxParser().parse(inputStream, handler);
+                getSaxParser().parse(inputStream, handler, ecuDefsFile.getAbsolutePath());
                 ecuDefinitionMap = handler.getEcuDefinitionMap();
             } finally {
                 inputStream.close();
@@ -87,13 +89,18 @@ public final class EcuDataLoaderImpl implements EcuDataLoader {
         checkNotNullOrEmpty(loggerConfigFilePath, "loggerConfigFilePath");
         checkNotNullOrEmpty(protocol, "protocol");
         checkNotNullOrEmpty(fileLoggingControllerSwitchId, "fileLoggingControllerSwitchId");
+        
+
+        Settings s = SettingsManager.getSettings();
+        boolean valid = true;
+        
         try {
-            InputStream inputStream = new BufferedInputStream(
-                    new FileInputStream(new File(loggerConfigFilePath)));
+            InputStream inputStream = new BufferedInputStream(new FileInputStream(new File(loggerConfigFilePath)));
             try {
                 LoggerDefinitionHandler handler = new LoggerDefinitionHandler(
                         protocol, fileLoggingControllerSwitchId, ecuInit);
-                getSaxParser().parse(inputStream, handler);
+                getSaxParser().parse(inputStream, handler, loggerConfigFilePath);
+                              
                 ecuParameters = handler.getEcuParameters();
                 ecuSwitches = handler.getEcuSwitches();
                 fileLoggingControllerSwitch = handler.getFileLoggingControllerSwitch();
@@ -101,10 +108,18 @@ public final class EcuDataLoaderImpl implements EcuDataLoader {
                 defVersion = handler.getVersion();
                 dtcodes = handler.getEcuCodes();
                 protocolList = handler.getProtocols();
+                
+                valid = isCurrentProtocolValid();
+
+                if(!valid) {                	
+                	s.setLoggerProtocol(protocolList.keySet().iterator().next());
+                	s.setTransportProtocol(protocolList.values().iterator().next().
+                			keySet().iterator().next().getId());               	               	
+                }                              
             } finally {
                 inputStream.close();
             }
-        } catch (FileNotFoundException fnfe) {
+        }/* catch (FileNotFoundException fnfe) {
             throw new ConfigurationException(MessageFormat.format(
                     rb.getString("LOGFNF"), loggerConfigFilePath));
         } catch (SAXParseException spe) {
@@ -112,11 +127,41 @@ public final class EcuDataLoaderImpl implements EcuDataLoader {
             // unzip the defs that a better error message is in order
             throw new ConfigurationException(MessageFormat.format(
                     rb.getString("UNZIPLOG"), loggerConfigFilePath));
-        } catch (Exception e) {
+        } */catch (Exception e) {
             throw new ConfigurationException(e);
         }
+        
+        //If the new definition did not contain the desired protocol, we have to 
+        // re-call the function with the new (available) protocol
+        // because only the loaded protocol gets parsed fully
+        if(!valid && isCurrentProtocolValid()) {
+        	loadConfigFromXml(loggerConfigFilePath,s.getLoggerProtocol(),
+        			fileLoggingControllerSwitchId, ecuInit);
+        }
     }
-
+    
+    private boolean isCurrentProtocolValid() {    	
+        Map<Transport, Collection<Module>> transportMap;
+        Settings s = SettingsManager.getSettings();
+        
+        if(!protocolList.containsKey(s.getLoggerProtocol())){  
+        	return false;
+        }
+        else {
+            transportMap = protocolList.get(s.getLoggerProtocol());               
+            
+            if(transportMap != null) {
+	            for (Transport transport : transportMap.keySet()) {
+	                if (transport.getId().equalsIgnoreCase(s.getTransportProtocol())) {
+	                	return true;
+	                }
+	            }
+            }
+            
+            return false;                 
+        }
+    }
+    
     public Map<String, EcuDefinition> getEcuDefinitionMap() {
         return ecuDefinitionMap;
     }

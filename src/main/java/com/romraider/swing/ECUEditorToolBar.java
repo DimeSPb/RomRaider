@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2020 RomRaider.com
+ * Copyright (C) 2006-2021 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -138,7 +138,7 @@ public class ECUEditorToolBar extends JToolBar implements ActionListener {
             }
         } else if (e.getSource() == saveImage) {
             try {
-                ((ECUEditorMenuBar) getEditor().getJMenuBar()).saveImage();
+                ((ECUEditorMenuBar) getEditor().getJMenuBar()).saveImage(false);
                 getEditor().refreshUI();
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(getEditor(), new DebugPanel(ex,

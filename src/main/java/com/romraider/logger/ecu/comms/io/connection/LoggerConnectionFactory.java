@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2020 RomRaider.com
+ * Copyright (C) 2006-2022 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,23 +24,24 @@ import static com.romraider.io.connection.ConnectionManagerFactory.getManager;
 import com.romraider.io.connection.ConnectionProperties;
 import com.romraider.io.elm327.ElmConnectionManager;
 import com.romraider.logger.ecu.exception.UnsupportedProtocolException;
-import com.romraider.logger.ecu.comms.io.connection.ELMOBDLoggerConnection;
 
 public final class LoggerConnectionFactory {
-    private LoggerConnectionFactory() {
-    }
+    private LoggerConnectionFactory() {}
 
     public static LoggerConnection getConnection(
-            String protocolName, 
-            String portName, 
-            ConnectionProperties connectionProperties) {
-        ConnectionManager manager = getManager(portName, connectionProperties);
+            final String protocolName,
+            final String portName,
+            final ConnectionProperties connectionProperties) {
+
+        final ConnectionManager manager = getManager(portName, connectionProperties);
         return instantiateConnection(protocolName, manager);
     }
 
-    private static LoggerConnection instantiateConnection(String protocolName,
-    		ConnectionManager manager) {
-    	if(manager.getClass() == ElmConnectionManager.class &&
+    private static LoggerConnection instantiateConnection(
+            final String protocolName,
+            final ConnectionManager manager) {
+
+        if (manager.getClass() == ElmConnectionManager.class &&
     			protocolName.equals("OBD")) {
         	return new ELMOBDLoggerConnection((ElmConnectionManager)manager);
     	}

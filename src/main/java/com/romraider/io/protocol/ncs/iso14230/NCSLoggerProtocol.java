@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2018 RomRaider.com
+ * Copyright (C) 2006-2021 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@ import static java.lang.System.arraycopy;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.romraider.io.protocol.Protocol;
@@ -49,8 +50,28 @@ public final class NCSLoggerProtocol implements LoggerProtocolNCS {
     }
 
     @Override
+    public byte[] constructStartDiagRequest(Module module) {
+        return protocol.constructStartDiagRequest(module);
+    }
+
+    @Override
+    public byte[] constructElevatedDiagRequest(Module module) {
+        return protocol.constructElevatedDiagRequest(module);
+    }
+
+    @Override
+    public byte[] constructEcuStopRequest(Module module) {
+        return protocol.constructEcuStopRequest(module);
+    }
+
+    @Override
     public byte[] constructEcuInitRequest(Module module) {
         return protocol.constructEcuInitRequest(module);
+    }
+
+    @Override
+    public byte[] constructEcuIdRequest(Module module) {
+        return protocol.constructEcuIdRequest(module);
     }
 
     @Override
@@ -84,6 +105,17 @@ public final class NCSLoggerProtocol implements LoggerProtocolNCS {
         Collection<EcuQuery> filteredQueries = filterDuplicates(queries);
         return protocol.constructLoadAddressRequest(
                 convertToByteAddresses(filteredQueries));
+    }
+
+    @Override
+    public byte[] constructReadMemoryRequest(Module module,
+            Collection<EcuQuery> queries, int length) {
+        return null;
+    }
+
+    @Override
+    public byte[] constructReadMemoryResponse(int requestSize, int length) {
+        return null;
     }
 
     @Override
@@ -125,9 +157,15 @@ public final class NCSLoggerProtocol implements LoggerProtocolNCS {
     }
 
     @Override
-    public void processReadSidPidResponse(byte[] response) {
+    public byte[] processEcuIdResponse(byte[] response) {
         checkNotNullOrEmpty(response, "response");
-        protocol.checkValidSidPidResponse(response);
+        return protocol.parseResponseData(response);
+    }
+
+    @Override
+    public byte[] processReadSidPidResponse(byte[] response) {
+        checkNotNullOrEmpty(response, "response");
+        return protocol.checkValidSidPidResponse(response);
     }
 
     @Override
@@ -160,6 +198,10 @@ public final class NCSLoggerProtocol implements LoggerProtocolNCS {
     }
 
     @Override
+    public void processReadMemoryResponses(Collection<EcuQuery> queries, byte[] response) {
+    }
+
+    @Override
     public Protocol getProtocol() {
         return protocol;
     }
@@ -178,7 +220,8 @@ public final class NCSLoggerProtocol implements LoggerProtocolNCS {
         protocol.checkValidWriteResponse(data, response);
     }
 
-    private Collection<EcuQuery> filterDuplicates(Collection<EcuQuery> queries) {
+    @Override
+    public Collection<EcuQuery> filterDuplicates(Collection<EcuQuery> queries) {
         Collection<EcuQuery> filteredQueries = new ArrayList<EcuQuery>();
         for (EcuQuery query : queries) {
             if (!filteredQueries.contains(query)) {
@@ -188,13 +231,8 @@ public final class NCSLoggerProtocol implements LoggerProtocolNCS {
         return filteredQueries;
     }
 
-    private byte[][] convertToByteAddresses(Collection<EcuQuery> queries) {
-        int byteCount = 0;
-        for (EcuQuery query : queries) {
-            byteCount += query.getAddresses().length;
-        }
-        byte[][] addresses = new byte[byteCount][];
-        int i = 0;
+    private Map<byte[], Integer> convertToByteAddresses(Collection<EcuQuery> queries) {
+        final Map<byte[], Integer> queryMap = new LinkedHashMap<byte[], Integer>();
         for (EcuQuery query : queries) {
             byte[] bytes = query.getBytes();
             int addrCount = query.getAddresses().length;
@@ -202,9 +240,9 @@ public final class NCSLoggerProtocol implements LoggerProtocolNCS {
             for (int j = 0; j < addrCount; j++) {
                 final byte[] addr = new byte[addrLen];
                 arraycopy(bytes, j * addrLen, addr, 0, addr.length);
-                addresses[i++] = addr;
+                queryMap.put(addr, 1);
             }
         }
-        return addresses;
+        return queryMap;
     }
 }

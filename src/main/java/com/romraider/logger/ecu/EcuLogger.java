@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2020 RomRaider.com
+ * Copyright (C) 2006-2022 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -107,13 +107,17 @@ import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
 import javax.swing.JWindow;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import javax.swing.table.TableColumn;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
 import com.romraider.Settings;
+import com.romraider.Version;
 import com.romraider.editor.ecu.ECUEditor;
+import com.romraider.editor.ecu.ECUEditorManager;
 import com.romraider.io.serial.port.SerialPortRefresher;
 import com.romraider.logger.ecu.comms.controller.LoggerController;
 import com.romraider.logger.ecu.comms.controller.LoggerControllerImpl;
@@ -182,7 +186,6 @@ import com.romraider.logger.external.core.ExternalDataSourceLoaderImpl;
 import com.romraider.swing.AbstractFrame;
 import com.romraider.swing.SetFont;
 import com.romraider.util.FormatFilename;
-import com.romraider.util.JREChecker;
 import com.romraider.util.ResourceUtil;
 import com.romraider.util.SettingsManager;
 
@@ -208,7 +211,7 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
     private static final String ECU_LOGGER_TITLE = PRODUCT_NAME + " v" + VERSION + " | " + rb.getString("TITLE");
     private static final String LOGGER_FULLSCREEN_ARG = "-logger.fullscreen";
     private static final String LOGGER_TOUCH_ARG = "-logger.touch";
-    private static final URL ICON_PATH =  Settings.class.getClass().getResource("/graphics/romraider-ico.gif");
+    private static final URL ICON_PATH =  Settings.class.getResource("/graphics/romraider-ico.gif");
     private static final String HEADING_PARAMETERS = "Parameters";
     private static final String HEADING_SWITCHES = "Switches";
     private static final String HEADING_EXTERNAL = "External";
@@ -294,26 +297,48 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
     private static boolean touchEnabled = false;
     private final JPanel moduleSelectPanel = new JPanel(new FlowLayout());
 
-    public EcuLogger() {
-        super(ECU_LOGGER_TITLE);
-        construct();
+    private static EcuLogger instance;
+
+    public static EcuLogger getEcuLoggerWithoutCreation() {
+    	return instance;
     }
 
-    public EcuLogger(ECUEditor ecuEditor) {
+    public static EcuLogger getEcuLogger(ECUEditor ecuEditor) {
+    	if (instance != null ) return instance;
+    	else {
+    		instance = new EcuLogger(ecuEditor);
+    		return instance;
+    	}
+    }
+
+    private EcuLogger(ECUEditor ecuEditor) {
         super(ECU_LOGGER_TITLE);
         this.ecuEditor = ecuEditor;
         construct();
     }
 
+    public void setEcuEditor(ECUEditor ecuEditor) {
+    	this.ecuEditor = ecuEditor;
+
+        mafTab = new MafTabImpl(mafTabBroker, ecuEditor);
+        injectorTab = new InjectorTabImpl(injectorTabBroker, ecuEditor);
+        dynoTab = new DynoTabImpl(dynoTabBroker, ecuEditor);
+
+        injectorUpdateHandler.setInjectorTab(injectorTab);
+        mafUpdateHandler.setMafTab(mafTab);
+        dynoUpdateHandler.setDynoTab(dynoTab);
+    }
+
     private void construct() {
-        // 64-bit won't work with the native libs (e.g. serial rxtx) but won't
-        // fail until we actually try to use them since the logger requires
-        // these libraries, this is a hard error here
-        if (!JREChecker.is32bit()) {
+        /**
+         * Bitness of supporting libraries must match the bitness of RomRaider
+         * and the running JRE.  Notify and exit if mixed bitness is detected.
+         */
+        if (!System.getProperty("sun.arch.data.model").equals(Version.BUILD_ARCH)) {
             showMessageDialog(null,
                     MessageFormat.format(
                             rb.getString("INCOMPJRE"),
-                            PRODUCT_NAME),
+                            PRODUCT_NAME, Version.BUILD_ARCH),
                 rb.getString("INCOMPJREERR"),
                 ERROR_MESSAGE);
             // this will generate a NullPointerException because we never got
@@ -347,7 +372,6 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
             progressBar.setValue(100);
             initDataUpdateHandlers();
             startPortRefresherThread();
-            if (!isLogging()) startLogging();
             startStatus.dispose();
         }
         else {
@@ -364,9 +388,9 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
             ecuEditor.getStatusPanel().update(rb.getString("COMPLETE"), 100);
             initDataUpdateHandlers();
             startPortRefresherThread();
-            if (!isLogging()) startLogging();
             ecuEditor.getStatusPanel().update(rb.getString("READY"),0);
         }
+        this.toFront();
     }
 
     private void bootstrap() {
@@ -420,18 +444,22 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
         controller = new LoggerControllerImpl(ecuInitCallback, this, liveDataUpdateHandler,
                 graphUpdateHandler, dashboardUpdateHandler, mafUpdateHandler, injectorUpdateHandler,
                 dynoUpdateHandler, fileUpdateHandler, TableUpdateHandler.getInstance());
+
         mafHandlerManager = new DataUpdateHandlerManagerImpl();
         mafTabBroker = new DataRegistrationBrokerImpl(controller, mafHandlerManager);
         mafTab = new MafTabImpl(mafTabBroker, ecuEditor);
         mafUpdateHandler.setMafTab(mafTab);
+
         injectorHandlerManager = new DataUpdateHandlerManagerImpl();
         injectorTabBroker = new DataRegistrationBrokerImpl(controller, injectorHandlerManager);
         injectorTab = new InjectorTabImpl(injectorTabBroker, ecuEditor);
         injectorUpdateHandler.setInjectorTab(injectorTab);
+
         dynoHandlerManager = new DataUpdateHandlerManagerImpl();
         dynoTabBroker = new DataRegistrationBrokerImpl(controller, dynoHandlerManager);
         dynoTab = new DynoTabImpl(dynoTabBroker, ecuEditor);
         dynoUpdateHandler.setDynoTab(dynoTab);
+
         resetManager = new ResetManagerImpl(this);
         messageLabel = new JLabel(ECU_LOGGER_TITLE);
         calIdLabel = new JLabel(buildEcuInfoLabelText(CAL_ID_LABEL, null));
@@ -486,7 +514,7 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
         long start = currentTimeMillis();
         while (!refresher.isStarted()) {
             checkSerialPortRefresherTimeout(start);
-            sleep(100);
+            sleep(5);
         }
     }
 
@@ -540,7 +568,11 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
 
     private void loadLoggerConfig() {
         String loggerConfigFilePath = getSettings().getLoggerDefinitionFilePath();
-        if (isNullOrEmpty(loggerConfigFilePath)) showMissingConfigDialog();
+        if (isNullOrEmpty(loggerConfigFilePath))
+        	{
+        		showMissingConfigDialog();
+        		getSettings().setLogExternalsOnly(true);
+        	}
         else {
             try {
                 EcuDataLoader dataLoader = new EcuDataLoaderImpl();
@@ -577,7 +609,7 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
                 }
 
                 loadResult = String.format(
-                        "%sloaded protocol %s: %d parameters, %d switches from def version %s.",
+                        "%sloaded protocol %s: %d parameters, %d switches from def version %s. ",
                         loadResult,
                         getSettings().getLoggerProtocol(),
                         ecuParams.size(),
@@ -586,12 +618,24 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
                 LOGGER.info(loadResult);
             } catch (ConfigurationException cfe) {
                 reportError(cfe);
-                showMissingConfigDialog();
+                showErrorConfigDialog(cfe);
             }
             catch (Exception e) {
                 reportError(e);
             }
         }
+    }
+
+    private void showErrorConfigDialog(Exception e) {
+        Object[] options = {"OK"};
+        showOptionDialog(this,
+                rb.getString("LOGGERDEFERROR") + e.getMessage(),
+                rb.getString("LOGGERCONFIG"),
+                DEFAULT_OPTION,
+                ERROR_MESSAGE,
+                null,
+                options,
+                options[0]);
     }
 
     private void showMissingConfigDialog() {
@@ -991,6 +1035,18 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
             tabbedPane.add("<html><body leftmargin=15 topmargin=15 marginwidth=15 marginheight=15>" + "Injector"+ "</body></html>", injectorTab.getPanel());
             tabbedPane.add("<html><body leftmargin=15 topmargin=15 marginwidth=15 marginheight=15>" + "Dyno" + "</body></html>", dynoTab.getPanel());
         }
+
+        //Check for definitions only when we open the dyno tab
+        tabbedPane.addChangeListener(new ChangeListener() {
+            @Override
+            public void stateChanged(ChangeEvent e) {
+                if(tabbedPane.getSelectedComponent() == dynoTab.getPanel())
+                {
+                	((DynoTabImpl)dynoTab).getDynoControlPanel().checkDynoDefs();
+                }
+            }
+        });
+
         return tabbedPane;
     }
 
@@ -1513,38 +1569,45 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
     private void buildModuleSelectPanel() {
         moduleSelectPanel.removeAll();
         final CustomButtonGroup moduleGroup = new CustomButtonGroup();
-        for (Module module : getModuleList()) {
-            final JCheckBox cb = new JCheckBox(module.getName().toUpperCase());
-            if (touchEnabled == true)
-            {
-                cb.setPreferredSize(new Dimension(75, 50));
-            }
-            cb.setToolTipText(MessageFormat.format(
-                    rb.getString("TTTEXTEXTERNALS"),
-                    module.getDescription()));
-            if (getSettings().getTargetModule().equalsIgnoreCase(module.getName())) {
-                cb.setSelected(true);
-                setTarget(module.getName());
-            }
-            cb.addActionListener(new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent actionEvent) {
-                    stopLogging();
-                    final JCheckBox source = (JCheckBox) actionEvent.getSource();
-                    if (source.isSelected()) {
-                        getSettings().setLogExternalsOnly(false);
-                        setTarget(source.getText());
-                    }
-                    else {
-                        getSettings().setLogExternalsOnly(true);
-                    }
-                    startLogging();
-                }
-            });
+        Collection<Module> moduleList = getModuleList();
+        if(moduleList.size() == 0) {
+        	getSettings().setLogExternalsOnly(true);
+        }
+        else {
+	        for (Module module : moduleList) {
+	            final JCheckBox cb = new JCheckBox(module.getName().toUpperCase());
+	            if (touchEnabled == true)
+	            {
+	                cb.setPreferredSize(new Dimension(75, 50));
+	            }
+	            cb.setToolTipText(MessageFormat.format(
+	                    rb.getString("TTTEXTEXTERNALS"),
+	                    module.getDescription()));
+	            if (getSettings().getTargetModule().equalsIgnoreCase(module.getName())) {
+	                cb.setSelected(true);
+	                setTarget(module.getName());
+	            }
 
-            moduleGroup.add(cb);
-            moduleSelectPanel.add(cb);
-            moduleSelectPanel.validate();
+	            cb.addActionListener(new ActionListener() {
+	                @Override
+	                public void actionPerformed(ActionEvent actionEvent) {
+	                    stopLogging();
+	                    final JCheckBox source = (JCheckBox) actionEvent.getSource();
+	                    if (source.isSelected()) {
+	                        getSettings().setLogExternalsOnly(false);
+	                        setTarget(source.getText());
+	                    }
+	                    else {
+	                        getSettings().setLogExternalsOnly(true);
+	                    }
+	                    startLogging();
+	                }
+	            });
+
+	            moduleGroup.add(cb);
+	            moduleSelectPanel.add(cb);
+	            moduleSelectPanel.validate();
+	        }
         }
     }
 
@@ -1596,26 +1659,30 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
         return inString.replaceAll("[A-Z]{3}", newString);
     }
 
-    private Transport getTransportById(String id) {
+
+	private Transport getTransportById(String id) {
         Transport loggerTransport = null;
-        for (Transport transport : getTransportMap().keySet()) {
+        Map<Transport, Collection<Module>> transportMap = getTransportMap();
+
+        for (Transport transport : transportMap.keySet()) {
             if (transport.getId().equalsIgnoreCase(id))
                 loggerTransport = transport;
         }
+
         return loggerTransport;
     }
 
-	public void updateElmSelectable() {	
+	public void updateElmSelectable() {
 		boolean value = getSettings().isObdProtocol();
 		RadioButtonMenuItem c = (RadioButtonMenuItem)getComponentList().get("elmEnabled");
-		c.setEnabled(value);	
-		
+		c.setEnabled(value);
+
 		if(!value) {
 			c.setSelected(false);
 			getSettings().setElm327Enabled(false);
 		}
 	}
-    
+
     private Map<Transport, Collection<Module>> getTransportMap() {
         return protocolList.get(getSettings().getLoggerProtocol());
     }
@@ -1858,6 +1925,13 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
             saveSettings();
             backupCurrentProfile();
             LOGGER.info("Logger shutdown successful");
+
+            if(ECUEditorManager.getECUEditorWithoutCreation() == null) {
+            	System.exit(0);
+            }
+            else {
+            	instance = null;
+            }
         }
     }
 
@@ -1880,7 +1954,8 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
         getSettings().setLoggerPluginPorts(getPluginPorts(externalDataSources));
         try {
             SettingsManager.save(getSettings());
-            LOGGER.debug("Logger settings saved");
+            if (LOGGER.isDebugEnabled())
+                LOGGER.debug("Logger settings saved");
         } catch (Exception e) {
             LOGGER.warn("Error saving logger settings:", e);
         }
@@ -1889,7 +1964,8 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
     private void backupCurrentProfile() {
         try {
             saveProfileToFile(getCurrentProfile(), new File(HOME + BACKUP_PROFILE));
-            LOGGER.debug("Backup profile saved");
+            if (LOGGER.isDebugEnabled())
+                LOGGER.debug("Backup profile saved");
         } catch (Exception e) {
             LOGGER.warn("Error backing up profile", e);
         }
@@ -1997,7 +2073,11 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
         refresher.setRefreshMode(refreshMode);
     }
     
-	public void setElmEnabled(Boolean value) {		
+    public void setAutoConnect(boolean connect) {
+        getSettings().setAutoConnectOnStartup(connect);
+    }
+
+	public void setElmEnabled(Boolean value) {
         getSettings().setElm327Enabled(value);
 	}
 
@@ -2025,21 +2105,17 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
 
     //**********************************************************************
 
-
-    public static void startLogger(int defaultCloseOperation, ECUEditor ecuEditor) {
-        EcuLogger ecuLogger = new EcuLogger(ecuEditor);
-        createAndShowGui(defaultCloseOperation, ecuLogger, false);
-    }
-
-    public static void startLogger(int defaultCloseOperation, String... args) {
+    public static void startLogger(int defaultCloseOperation, ECUEditor ecuEditor, String[] args) {
         touchEnabled = setTouchEnabled(args);
-        EcuLogger ecuLogger = new EcuLogger();
         boolean fullscreen = containsFullScreenArg(args);
-
+        EcuLogger ecuLogger = getEcuLogger(ecuEditor);
         createAndShowGui(defaultCloseOperation, ecuLogger, fullscreen);
+        if (ecuLogger.getSettings().getAutoConnectOnStartup() && !ecuLogger.isLogging()) ecuLogger.startLogging();
     }
 
     private static boolean containsFullScreenArg(String... args) {
+    	if(args == null) return false;
+
         for (String arg : args) {
             if (LOGGER_FULLSCREEN_ARG.equalsIgnoreCase(arg)) return true;
         }
@@ -2047,6 +2123,8 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
     }
 
     private static boolean setTouchEnabled(String... args) {
+    	if(args == null) return false;
+
         for (String arg : args) {
             if (LOGGER_TOUCH_ARG.equalsIgnoreCase(arg)) return true;
         }

@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2020 RomRaider.com
+ * Copyright (C) 2006-2022 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,14 +23,23 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.text.MessageFormat;
+import java.util.Properties;
 import java.util.ResourceBundle;
+import java.util.Scanner;
 import java.util.Vector;
 
 import javax.swing.*;
 
+import com.romraider.Settings;
 import com.romraider.editor.ecu.ECUEditorManager;
 import com.romraider.util.ResourceUtil;
 import com.romraider.util.SettingsManager;
+import com.romraider.xml.ConversionLayer.ConversionLayer;
+import com.romraider.xml.ConversionLayer.ConversionLayerFactory;
 
 public class DefinitionManager extends javax.swing.JFrame implements ActionListener {
 
@@ -39,6 +48,7 @@ public class DefinitionManager extends javax.swing.JFrame implements ActionListe
             DefinitionManager.class.getName());
     public static int MOVE_UP = 0;
     public static int MOVE_DOWN = 1;
+    private final Properties props = loadSequences();
 
     Vector<String> fileNames;
 
@@ -58,7 +68,6 @@ public class DefinitionManager extends javax.swing.JFrame implements ActionListe
         btnMoveDown.addActionListener(this);
         btnApply.addActionListener(this);
         btnUndo.addActionListener(this);
-
     }
 
     private void initSettings() {
@@ -211,11 +220,80 @@ public class DefinitionManager extends javax.swing.JFrame implements ActionListe
     }
 
     public void addFile() {
-        JFileChooser fc = new JFileChooser("./");
-        fc.setFileFilter(new XMLFilter());
+        final Settings settings = SettingsManager.getSettings();
+        final JFileChooser fc = new JFileChooser(settings.getLastDefinitionDir());
+        fc.setMultiSelectionEnabled(true);
+        fc.setFileFilter(new DefinitionFilter());
 
         if (fc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-            fileNames.add(fc.getSelectedFile().getAbsolutePath());
+            for (File f : fc.getSelectedFiles()) {
+                boolean alreadyAdded = false;
+
+                //Check if it already exists in the list
+                for (String path : fileNames) {
+                    if (path.equalsIgnoreCase(f.getAbsolutePath())) {
+                        alreadyAdded = true;
+                        break;
+                    }
+                }
+
+                if (!alreadyAdded) {
+                    //If its a file that needs to be converted sometimes a warning
+                    //should be displayed to the user
+                    if (ConversionLayerFactory.requiresConversionLayer(f)) {
+                        ConversionLayer layer = ConversionLayerFactory.getConversionLayerForFile(f);
+
+                        if (layer.getDefinitionPickerInfo() != null) {
+                            JOptionPane.showMessageDialog(null, layer.getDefinitionPickerInfo(),
+                                    rb.getString("CONVERSIONTITLE"), JOptionPane.WARNING_MESSAGE);
+                        }
+                    }
+                }
+                else {
+                    continue;   // selected file(s) for loop
+                }
+
+                // Try to determine if the selected file is valid, refuse to
+                // add invalid types.
+                // File types and search sequences are loaded from a properties file.
+                if (props.size() > 0) {
+                    String fileType = "RomRaider";
+                    boolean breakSearch = false;
+                    try {
+                        final Scanner scan = new Scanner(f);
+                        // Scan the file looking for invalid string sequences,
+                        // the value of a properties file key.
+                        while(scan.hasNext()) {
+                            breakSearch = false;
+                            final String line = scan.nextLine().toLowerCase().toString();
+                            for (Object key : props.keySet()) {
+                                if (line.contains(props.getProperty((String) key))) {
+                                    fileType = (String) key;
+                                    breakSearch = true;
+                                    break;  // for loop
+                                }
+                            }
+                            if (breakSearch) break; // while loop
+                        }
+                        scan.close();
+
+                    } catch (FileNotFoundException e) {
+                        // Since the user selected it, it should be found.
+                        e.printStackTrace();
+                    }
+                    if (!fileType.equalsIgnoreCase("RomRaider")) {
+                        JOptionPane.showMessageDialog(this, MessageFormat.format(
+                                rb.getString("INVALIDMSG"), fileType, f.getName()),
+                                rb.getString("INVALIDFILE"),
+                                JOptionPane.WARNING_MESSAGE);
+                        continue;
+                    }
+                }
+                fileNames.add(f.getAbsolutePath());
+
+                settings.setLastDefinitionDir(f.getParentFile());
+            }
+
             updateListModel();
         }
     }
@@ -263,4 +341,28 @@ public class DefinitionManager extends javax.swing.JFrame implements ActionListe
     private javax.swing.JScrollPane jScrollPane1;
     // End of variables declaration//GEN-END:variables
 
+    /**
+     * Load String search sequences from a user customized properties file.
+     * The file will populate a search list if it is present.
+     * String search Sequences in the file are in type=sequence sets.
+     * @exception    FileNotFoundException if the directory or file is not present
+     * @exception    IOException if there's some kind of IO error
+     */
+    private Properties loadSequences() {
+        final Properties sequences = new Properties();
+        try {
+            final FileInputStream propFile = new FileInputStream("./customize/nameSequences.properties");
+            sequences.load(propFile);
+            propFile.close();
+        } catch (FileNotFoundException e) {
+            JOptionPane.showMessageDialog(null, e.getLocalizedMessage(),
+                    "FileNotFoundException",
+                    JOptionPane.ERROR_MESSAGE);
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(null, e.getLocalizedMessage(),
+                    "IOException",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+        return sequences;
+    }
 }

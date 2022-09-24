@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2020 RomRaider.com
+ * Copyright (C) 2006-2022 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -132,11 +132,14 @@ public class CompareImagesForm extends JFrame implements ActionListener {
                     Rom rightRom = (Rom) comboBoxImageRight.getSelectedItem();
 
                     // Display Tables
-                    TableTreeNode leftNode = findAndShowTable(leftRom, tableName);
-                    TableTreeNode rightNode = findAndShowTable(rightRom, tableName);
-
+                    TableTreeNode leftNode = leftRom.getTableNodeByName(tableName);
+                    TableTreeNode rightNode = rightRom.getTableNodeByName(tableName);
+                    
                     // Set Comparison
                     if(leftNode != null && rightNode != null) {
+                        ECUEditorManager.getECUEditor().displayTable(leftNode);
+                        ECUEditorManager.getECUEditor().displayTable(rightNode);
+                        
                         leftNode.getFrame().compareByTable(rightNode.getTable());
                         // Update menu bar
                         for(int i = 0; i< leftNode.getFrame().getTableMenuBar().getSimilarOpenTables().getItemCount(); i++) {
@@ -153,17 +156,7 @@ public class CompareImagesForm extends JFrame implements ActionListener {
         });
         populateComboBoxes();
     }
-
-    private TableTreeNode findAndShowTable(Rom rom, String tableName) {
-        for(TableTreeNode node : rom.getTableNodes()) {
-            if(node != null && node.getTable().getName().equals(tableName)){
-                ECUEditorManager.getECUEditor().displayTable(node.getFrame());
-                return node;
-            }
-        }
-        return null;
-    }
-
+    
     public void populateComboBoxes()
     {
         for(int i=0; i<roms.size(); i++) {
@@ -184,11 +177,12 @@ public class CompareImagesForm extends JFrame implements ActionListener {
         int different = 0;
         int missing = 0;
 
-        for(TableTreeNode leftNode : left.getTableNodes())
+        //TODO: Utilize map correctly!
+        for(TableTreeNode leftNode : left.getTableNodes().values())
         {
             Boolean found = false;
             Table leftTable = leftNode.getTable();
-            for(TableTreeNode rightNode : right.getTableNodes())
+            for(TableTreeNode rightNode : right.getTableNodes().values())
             {
                 Table rightTable = rightNode.getTable();
 
@@ -200,7 +194,7 @@ public class CompareImagesForm extends JFrame implements ActionListener {
                     }
                     else {
                         different++;
-                        listModelChanges.addElement(new ListItem(2, leftTable.getName()));
+                        listModelChanges.add(0, new ListItem(2, leftTable.getName()));
                     }
                     found = true;
                     break;
@@ -209,14 +203,14 @@ public class CompareImagesForm extends JFrame implements ActionListener {
 
             if(!found) {
                 missing++;
-                listModelChanges.addElement(new ListItem(3, leftTable.getName()));
+                listModelChanges.add(0, new ListItem(3, leftTable.getName()));
             }
         }
 
         // Check if rightTables has tables that do not exist in left table.
-        for(TableTreeNode rightFrame : right.getTableNodes()) {
+        for(TableTreeNode rightFrame : right.getTableNodes().values()) {
             Boolean found = false;
-            for(TableTreeNode leftFrame : left.getTableNodes()) {
+            for(TableTreeNode leftFrame : left.getTableNodes().values()) {
                 if(leftFrame.getTable().getName().equalsIgnoreCase(rightFrame.getTable().getName()))
                 {
                     found = true;
@@ -226,7 +220,7 @@ public class CompareImagesForm extends JFrame implements ActionListener {
 
             if(!found) {
                 missing++;
-                listModelChanges.addElement(new ListItem(3, rightFrame.getTable().getName()));
+                listModelChanges.add(0, new ListItem(3, rightFrame.getTable().getName()));
             }
         }
 
@@ -266,7 +260,7 @@ public class CompareImagesForm extends JFrame implements ActionListener {
 
         if(missing == 0)
         {
-            listModelChanges.addElement(new ListItem(3, rb.getString("NOMISSING")));
+            listModelChanges.add(0, new ListItem(3, rb.getString("NOMISSING")));
         }
 
     }

@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2019 RomRaider.com
+ * Copyright (C) 2006-2022 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -52,7 +52,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.text.MessageFormat;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -168,7 +167,7 @@ public final class DynoControlPanel extends JPanel {
     private boolean wotSet;
     private String path;
     private String carInfo;
-    private String[] carTypeArr;
+    private String[] carTypeArr = {MISSING_CAR_DEF};
     private String[] carMassArr;
     private String[] dragCoeffArr;
     private String[] rollCoeffArr;
@@ -211,7 +210,7 @@ public final class DynoControlPanel extends JPanel {
     private String iatLogUnits = "F";
     private String atmLogUnits = "psi";
     private String vsLogUnits = LOG_VS_I;
-    private String throttle_param = THROTTLE_ANGLE;;
+    private String throttle_param = THROTTLE_ANGLE;
     private final double[] results = new double[5];
     private final String[] resultStrings = new String[6];
     //    private String hpUnits = "hp(I)";
@@ -510,7 +509,8 @@ public final class DynoControlPanel extends JPanel {
 
     public boolean isValidET(long now, double vs) {
         try {
-            //            LOGGER.trace("lastET: " + lastET + " now: " + now + " VS: " + vs);
+            //if (LOGGER.isTraceEnabled())
+            //    LOGGER.trace("lastET: " + lastET + " now: " + now + " VS: " + vs);
             if (vs > 0) {
                 if (vsLogUnits.equals(LOG_VS_M)) vs = (vs / KPH_2_MPH);
                 distance = distance + (vs * 5280 / 3600 * (now - lastET) / 1000);
@@ -955,7 +955,8 @@ public final class DynoControlPanel extends JPanel {
         //                ambTemp.setText(String.format("%1.1f", result));
         //                result = parseDouble(carMass) * 0.4536;
         //                carMass.setText(String.format("%1.0f", result));
-        //                LOGGER.trace("units selcted: " + units + " result: " + result);
+        //                if (LOGGER.isTraceEnabled())
+        //                    LOGGER.trace("units selcted: " + units + " result: " + result);
         //                result = parseDouble(deltaMass) * 0.4536;
         //                deltaMass.setText(String.format("%1.0f", result));
         //                result = parseDouble(elevation) * 0.3048;
@@ -1038,40 +1039,49 @@ public final class DynoControlPanel extends JPanel {
                     if (headers[x].contains(LOG_VS_I)) vsLogUnits = LOG_VS_I;
                     if (headers[x].contains(LOG_VS_M)) vsLogUnits = LOG_VS_M;
                 }
-                LOGGER.trace("DYNO log file conversions: Time Column: " + timeCol + "; Time X: " + timeMult +
+                if (LOGGER.isTraceEnabled())
+                    LOGGER.trace("DYNO log file conversions: Time Column: " + timeCol + "; Time X: " + timeMult +
                         "; RPM Column: " + rpmCol + "; TA Column: " + taCol + "; VS Column: " + vsCol +
                         "; VS units: " + vsLogUnits);
                 while ((line = inputStream.readLine()) != null) {
+
+                	//Convert everything to . notation
                     String[] values = line.split(delimiter);
-                    if (NumberUtil.doubleValue(values[taCol]) > tpsMin) {
+
+                    for(int i=0; i < values.length;i++) {
+                    	values[i] = values[i].replace(',', '.');
+                    }
+
+                    if (Double.parseDouble(values[taCol]) > tpsMin) {
                         double logTime = 0;
                         if (atrTime) {
                             String[] timeStamp = values[timeCol].split(COLON);
                             if (timeStamp.length == 3) {
-                                logTime = (NumberUtil.doubleValue(timeStamp[0]) * 3600) +
-                                        (NumberUtil.doubleValue(timeStamp[1]) * 60) +
-                                        NumberUtil.doubleValue(timeStamp[2]) * timeMult;
+                                logTime = (Double.parseDouble(timeStamp[0]) * 3600) +
+                                        (Double.parseDouble(timeStamp[1]) * 60) +
+                                        Double.parseDouble(timeStamp[2]) * timeMult;
                             } else {
-                                logTime = (NumberUtil.doubleValue(timeStamp[0]) * 60) +
-                                        NumberUtil.doubleValue(timeStamp[1]) * timeMult;
+                                logTime = (Double.parseDouble(timeStamp[0]) * 60) +
+                                		Double.parseDouble(timeStamp[1]) * timeMult;
                             }
                         } else {
-                            logTime = NumberUtil.doubleValue(values[timeCol]) * timeMult;
+                            logTime = Double.parseDouble(values[timeCol]) * timeMult;
                         }
                         if (startTime == -999999999) startTime = logTime;
                         logTime = logTime - startTime;
                         double logRpm = 0;
                         if (isManual()) {
-                            logRpm = NumberUtil.doubleValue(values[rpmCol]);
+                            logRpm = Double.parseDouble(values[rpmCol]);
                             minRpm = Math.min(minRpm, logRpm);
                             maxRpm = Math.max(maxRpm, logRpm);
                         } else {
-                            logRpm = NumberUtil.doubleValue(values[vsCol]);
+                            logRpm = Double.parseDouble(values[vsCol]);
                             minRpm = Math.min(minRpm, calculateRpm(logRpm, rpm2mph, vsLogUnits));
                             maxRpm = Math.max(maxRpm, calculateRpm(logRpm, rpm2mph, vsLogUnits));
                         }
                         chartPanel.addRawData(logTime, logRpm);
-                        LOGGER.trace("DYNO log file time: " + logTime + "; speed: " + logRpm);
+                        if (LOGGER.isTraceEnabled())
+                            LOGGER.trace("DYNO log file time: " + logTime + "; speed: " + logRpm);
                     }
                 }
                 inputStream.close();
@@ -1082,9 +1092,6 @@ public final class DynoControlPanel extends JPanel {
             catch (IOException e) {
 				e.printStackTrace();
             }
-            catch (ParseException e) {
-				e.printStackTrace();
-			}
             finally {
                 if (inputStream != null) {
                     try {
@@ -1100,13 +1107,13 @@ public final class DynoControlPanel extends JPanel {
     }
 
     private JButton buildOpenReferenceButton() {
-        final JFileChooser openFile = new JFileChooser();
-        if (path != null) openFile.setCurrentDirectory(new File(path));
         final JButton openButton = new JButton(rb.getString("OPEN"));
 
         openButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent actionEvent) {
+                final JFileChooser openFile = new JFileChooser();
+                if (path != null) openFile.setCurrentDirectory(new File(path));
                 int returnVal = openFile.showOpenDialog(openButton);
 
                 if (returnVal == JFileChooser.APPROVE_OPTION) {
@@ -1161,13 +1168,14 @@ public final class DynoControlPanel extends JPanel {
     }
 
     private JButton buildSaveReferenceButton() {
-        final JFileChooser openFile = new JFileChooser();
-        if (path != null) openFile.setCurrentDirectory(new File(path));
         final JButton saveButton = new JButton(rb.getString("SAVE"));
 
         saveButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent actionEvent) {
+                final JFileChooser openFile = new JFileChooser();
+                if (path != null) openFile.setCurrentDirectory(new File(path));
+                
                 int returnVal = openFile.showSaveDialog(saveButton);
 
                 if (returnVal == JFileChooser.APPROVE_OPTION) {
@@ -1366,7 +1374,7 @@ public final class DynoControlPanel extends JPanel {
             }
         });
         minTpsField.setInputVerifier(new NumberVerifier("Threshold"));
-        String thres = getSettings().getDynoThreshold();    
+        String thres = getSettings().getDynoThreshold();
         minTpsField.setText(thres);
 
         tpsMin = parseDouble(minTpsField);
@@ -1449,12 +1457,8 @@ public final class DynoControlPanel extends JPanel {
     }
 
     private double parseDouble(JTextField field) {
-        try {
-            return NumberUtil.doubleValue(field.getText().trim());
-        } catch (ParseException e) {
-            LOGGER.error(rb.getString("ERROR"), e);
-        }
-        return Double.parseDouble("NaN");
+    	String s = field.getText().trim().replace(',', '.');
+    	return Double.parseDouble(s);
     }
 
     public void setEcuParams(List<EcuParameter> params) {
@@ -1502,6 +1506,26 @@ public final class DynoControlPanel extends JPanel {
         }
     }
 
+    public void checkDynoDefs() {
+    	if (carTypeArr[0].trim().equals(MISSING_CAR_DEF)){
+	        Object[] options = {"Yes", "No"};
+	        int answer = showOptionDialog(parent,
+	                rb.getString("CDNOTFOUND"),
+	                rb.getString("CONFIGURATION"),
+	                DEFAULT_OPTION, WARNING_MESSAGE,
+	                null, options, options[0]);
+	        if (answer == 0) {
+	            BrowserControl.displayURL(CARS_DEFS_URL);
+	        } else {
+	            final String msg = MessageFormat.format(
+	                    rb.getString("MISSINGCD"), MISSING_CAR_DEF);
+	            showMessageDialog(parent,
+	            msg,
+	            rb.getString("NOTICE"), WARNING_MESSAGE);
+	        }
+    	}
+    }
+
     private void changeCars(int index) {
         if (!carTypeArr[0].trim().equals(MISSING_CAR_DEF)) {
             iButton.doClick();
@@ -1535,31 +1559,24 @@ public final class DynoControlPanel extends JPanel {
     private void loadCars() {
         try {
             File carDef = null;
-            final String SEPARATOR = System.getProperty("file.separator");
-            final String loggerFilePath = getSettings().getLoggerDefinitionFilePath();
-            if (loggerFilePath != null) {
-                final int index = loggerFilePath.lastIndexOf(SEPARATOR);
-                if (index > 0) {
-                    final String path = loggerFilePath.substring(0, index + 1);
-                    carDef = new File(path + CARS_FILE);
-                }
+
+            //Look through some folders to find the car definition file
+            //Do NOT delete the "", this also searches through the local folder!
+            final String searchPaths[] = {getSettings().getLoggerDefinitionFilePath(), getSettings().getLoggerProfileFilePath(), ""};
+
+            for (String s : searchPaths) {
+            	File f = new File(s);
+            	File path_test = new File(f.getParent(), CARS_FILE);
+
+            	if(path_test.exists()) {
+                    LOGGER.info("Loaded dyno definition file from " + path_test.getAbsolutePath());
+            		carDef = path_test;
+            		break;
+            	}
             }
-            if (!carDef.exists()) {
-                final String profileFilePath = getSettings().getLoggerProfileFilePath();
-                if (profileFilePath != null) {
-                    final int index = profileFilePath.lastIndexOf(SEPARATOR);
-                    if (index > 0) {
-                        final String path = profileFilePath.substring(0, index + 1);
-                        carDef = new File(path + CARS_FILE);
-                    }
-                }
-            }
-            if (!carDef.exists()) {
-                carDef = new File(CARS_FILE);
-            }
-            if (!carDef.exists()) {
-                throw new FileNotFoundException(MISSING_CAR_DEF);
-            }
+
+            if(carDef == null) throw new FileNotFoundException(MISSING_CAR_DEF);
+
             DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory.newInstance();
             DocumentBuilder docBuilder = docBuilderFactory.newDocumentBuilder();
             Document carsDef = docBuilder.parse(carDef);
@@ -1612,7 +1629,8 @@ public final class DynoControlPanel extends JPanel {
                                             gearsRatioArr[s][g] = grsValueList.item(0).getNodeValue().trim();
                                         }
                                     }
-                                    //                                        LOGGER.trace("Car: " + s + " Gear: " + g + " Ratio: " + gearsRatioArr[s][g]);
+                                    //if (LOGGER.isTraceEnabled())
+                                    //    LOGGER.trace("Car: " + s + " Gear: " + g + " Ratio: " + gearsRatioArr[s][g]);
                                 }
                                 break;
                             case 1:
@@ -1663,23 +1681,9 @@ public final class DynoControlPanel extends JPanel {
             ((x == null) ? e : x).printStackTrace();
         }
         catch (Throwable t) {    // file not found
-            Object[] options = {"Yes", "No"};
-            int answer = showOptionDialog(this,
-                    rb.getString("CDNOTFOUND"),
-                    rb.getString("CONFIGURATION"),
-                    DEFAULT_OPTION, WARNING_MESSAGE,
-                    null, options, options[0]);
-            if (answer == 0) {
-                BrowserControl.displayURL(CARS_DEFS_URL);
-            } else {
-                final String msg = MessageFormat.format(
-                        rb.getString("MISSINGCD"), MISSING_CAR_DEF);
-                showMessageDialog(parent,
-                msg,
-                rb.getString("NOTICE"), WARNING_MESSAGE);
-            }
             carTypeArr = new String[]{MISSING_CAR_DEF};
-            t.printStackTrace();
+            LOGGER.warn("No " + CARS_FILE + " file found, possible missing DTD issue?");
+            //t.printStackTrace();
         }
     }
 

@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2019 RomRaider.com
+ * Copyright (C) 2006-2021 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@ import static com.romraider.util.ParamChecker.checkNotNullOrEmpty;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Map;
 
 import com.romraider.io.connection.ConnectionProperties;
 import com.romraider.io.connection.KwpConnectionProperties;
@@ -53,6 +54,8 @@ public final class NCSProtocol implements ProtocolNCS {
     public static final byte WRITE_ADDRESS_RESPONSE = (byte) 0xF8;
     public static final byte FASTINIT_COMMAND = (byte) 0x81;
     public static final byte FASTINIT_RESPONSE = (byte) 0xC1;
+    public static final byte STOP_COMMAND = (byte) 0x82;
+    public static final byte STOP_RESPONSE = (byte) 0xC2;
     public static final byte ECU_ID_SID = (byte) 0x1A;
     public static final byte OPTION_81 = (byte) 0x81;
     public static final byte FIELD_TYPE_01 = (byte) 0x01;
@@ -68,7 +71,8 @@ public final class NCSProtocol implements ProtocolNCS {
     public static final int RESPONSE_NON_DATA_BYTES = 3;
     public static final int ADDRESS_SIZE = 3;
     public static Module module;
-    
+
+    @Override
     public byte[] constructEcuFastInitRequest(Module module) {
         checkNotNull(module, "module");
         NCSProtocol.module = module;
@@ -78,7 +82,34 @@ public final class NCSProtocol implements ProtocolNCS {
     }
 
     @Override
+    public byte[] constructEcuStopRequest(Module module) {
+        checkNotNull(module, "module");
+        NCSProtocol.module = module;
+        final byte[] request = buildRequest(
+                STOP_COMMAND, false, new byte[]{});
+        return request;
+    }
+
+    // not implemented
+    @Override
+    public byte[] constructStartDiagRequest(Module module) {
+        return null;
+    }
+
+    // not implemented
+    @Override
+    public byte[] constructElevatedDiagRequest(Module module) {
+        return null;
+    }
+
+    // not implemented
+    @Override
     public byte[] constructEcuInitRequest(Module module) {
+        return null;
+    }
+
+    @Override
+    public byte[] constructEcuIdRequest(Module module) {
         checkNotNull(module, "module");
         NCSProtocol.module = module;
         // len  SID  opt  chk
@@ -102,7 +133,7 @@ public final class NCSProtocol implements ProtocolNCS {
             Module module, byte[] address, byte[] values) {
 
         throw new UnsupportedProtocolException(
-                "Write memory command is not supported on for address: " + 
+                "Write memory command is not supported on for address: " +
                 asHex(address));
     }
 
@@ -112,7 +143,7 @@ public final class NCSProtocol implements ProtocolNCS {
             Module module, byte[] address, byte value) {
 
         throw new UnsupportedProtocolException(
-                "Write Address command is not supported on for address: " + 
+                "Write Address command is not supported on for address: " +
                 asHex(address));
     }
 
@@ -122,17 +153,32 @@ public final class NCSProtocol implements ProtocolNCS {
             Module module, byte[] address, int numBytes) {
 
         throw new UnsupportedProtocolException(
-                "Read memory command is not supported on for address: " + 
+                "Read memory command is not supported on for address: " +
                 asHex(address));
     }
 
     @Override
-    public byte[] constructLoadAddressRequest(byte[][] addresses) {
-        checkNotNullOrEmpty(addresses, "addresses");
+    //TODO: not yet implemented
+    public byte[] constructReadMemoryRequest(Module module, byte[][] address,
+            int numBytes) {
+
+        throw new UnsupportedProtocolException(
+                "Read memory command is not supported on for address: " +
+                asHex(address[0]));
+    }
+
+    @Override
+    public byte[] constructLoadAddressRequest(Map<byte[], Integer> queries) {
+        checkNotNullOrEmpty(queries, "queries");
         // short header - false, length encoded into lower 5 bits of first byte
         // 0x8Len 0x10 0xFC 0xac 0x81 fld_typ address1 [[fld_typ address2] ... [fld_typ addressN]] checksum
         // short header - true
         // Len 0xac 0x81 fld_typ address1 [[fld_typ address2] ... [fld_typ addressN]] checksum
+        byte [][] addresses = new byte[queries.size()][];
+        int i = 0;
+        for (byte [] query : queries.keySet()) {
+                addresses[i++] = query;
+        }
         return buildLoadAddrRequest(true, addresses);
     }
 
@@ -149,7 +195,7 @@ public final class NCSProtocol implements ProtocolNCS {
             PollingState pollState) {
         byte opt_byte3;
         if (pollState.isFastPoll()) {
-            // continuously read response of previously loaded addresses 
+            // continuously read response of previously loaded addresses
             // len 0x21 0x81 0x06 0x01 checksum
             opt_byte3 = (byte) 0x06;
         }
@@ -184,7 +230,6 @@ public final class NCSProtocol implements ProtocolNCS {
     @Override
     public EcuInit parseEcuInitResponse(byte[] processedResponse) {
         checkNotNullOrEmpty(processedResponse, "processedResponse");
-        //final byte[] ecuInitBytes = parseResponseData(processedResponse);
         return new NCSEcuInit(processedResponse);
     }
 
@@ -196,6 +241,7 @@ public final class NCSProtocol implements ProtocolNCS {
 
     @Override
     //TODO: not yet implemented
+    // maybe use: Service $11 - Module reset
     public byte[] constructEcuResetRequest(Module module, int resetCode) {
         checkNotNull(module, "module");
         NCSProtocol.module = module;
@@ -203,9 +249,9 @@ public final class NCSProtocol implements ProtocolNCS {
     }
 
     @Override
-    public void checkValidSidPidResponse(byte[] response) {
+    public byte[] checkValidSidPidResponse(byte[] response) {
         checkNotNullOrEmpty(response, "SidPidResponse");
-        NCSResponseProcessor.validateResponse(response);
+        return NCSResponseProcessor.extractResponseData(response);
     }
 
     @Override
@@ -215,7 +261,7 @@ public final class NCSProtocol implements ProtocolNCS {
         byte responseType = processedResponse[4];
         if (responseType != ECU_RESET_RESPONSE) {
             throw new InvalidResponseException(
-                    "Unexpected OBD Reset response: " + 
+                    "Unexpected OBD Reset response: " +
                     asHex(processedResponse));
         }
     }
@@ -228,43 +274,53 @@ public final class NCSProtocol implements ProtocolNCS {
     public ConnectionProperties getDefaultConnectionProperties() {
         return new KwpConnectionProperties() {
 
+            @Override
             public int getBaudRate() {
                 return 10400;
             }
 
+            @Override
             public void setBaudRate(int b) {
 
             }
 
+            @Override
             public int getDataBits() {
                 return 8;
             }
 
+            @Override
             public int getStopBits() {
                 return 1;
             }
 
+            @Override
             public int getParity() {
                 return 0;
             }
 
+            @Override
             public int getConnectTimeout() {
                 return 2000;
             }
 
+            @Override
             public int getSendTimeout() {
                 return 255;
             }
 
 
+            @Override
             public int getP1Max() {
                 return 0;
             }
 
+            @Override
             public int getP3Min() {
                 return 5;
             }
 
+            @Override
             public int getP4Min() {
                 return 0;
             }
@@ -273,7 +329,7 @@ public final class NCSProtocol implements ProtocolNCS {
 
     private final byte[] buildRequest(byte command, boolean shortHeader,
             byte[]... content) {
-    
+
         int length = 1;
         for (byte[] tmp : content) {
             length += tmp.length;
@@ -306,7 +362,7 @@ public final class NCSProtocol implements ProtocolNCS {
 
     private final byte[] buildSidPidRequest(byte command, boolean shortHeader,
             byte[]... content) {
-    
+
         int length = 3;
         for (byte[] tmp : content) {
             length += tmp.length;
@@ -341,7 +397,7 @@ public final class NCSProtocol implements ProtocolNCS {
 
     private final byte[] buildLoadAddrRequest(boolean shortHeader,
             byte[]... content) {
-    
+
         int length = 2;
         byte[] request = new byte[0];
         try {
@@ -367,10 +423,10 @@ public final class NCSProtocol implements ProtocolNCS {
                     bb.write(tmp, 1, tmp.length - 1);
                     continue;
                 }
-                if (tmp[0] == (byte) 0xFF) {
+                if (tmp.length == 3 && (tmp[0] & 0x80) == 0x80) {
                     bb.write(FIELD_TYPE_83);
                     bb.write((byte) 0xFF);
-                    bb.write(tmp);
+                    bb.write(tmp, 0, 3);
                 }
                 else {  //assume a short length ROM address
                     bb.write(FIELD_TYPE_83);

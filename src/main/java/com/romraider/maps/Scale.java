@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2017 RomRaider.com
+ * Copyright (C) 2006-2021 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,10 +23,13 @@ package com.romraider.maps;
 
 import java.io.Serializable;
 
+import com.romraider.util.JEPUtil;
+
 public class Scale implements Serializable {
 
     private static final long serialVersionUID = 5836610685159474795L;
 
+    private String category = "Raw Value";
     private String name = "Raw Value";
     private String unit = "raw value";
     private String expression = "x";
@@ -36,23 +39,103 @@ public class Scale implements Serializable {
     private double fineIncrement = 1;
     private double min = 0.0;
     private double max = 0.0;
-
-    public Scale() {
-    }
+    
+    private double lastApproximatedInput;
+    private double lastApproximatedOutput;
 
     @Override
     public String toString() {
-        return  "\n      ---- Scale ----" +
-                "\n      Name: " + getName() +
-                "\n      Expression: " + getExpression() +
-                "\n      Byte Expression: " + getByteExpression() +
-                "\n      Unit: " + getUnit() +
-                "\n      Format: " + getFormat() +
-                "\n      Coarse Increment: " + getCoarseIncrement() +
-                "\n      Fine Increment: " + getFineIncrement() +
-                "\n      Min: " + getMin() +
-                "\n      Max: " + getMax() +
-                "\n      ---- End Scale ----\n";
+        return  "\n    ---- Scale ----" +
+                "\n    Category: " + getCategory() +
+                "\n    Name: " + getName() +
+                "\n    Expression: " + getExpression() +
+                "\n    Byte Expression: " + getByteExpression() +
+                "\n    Unit: " + getUnit() +
+                "\n    Format: " + getFormat() +
+                "\n    Coarse Increment: " + getCoarseIncrement() +
+                "\n    Fine Increment: " + getFineIncrement() +
+                "\n    Min: " + getMin() +
+                "\n    Max: " + getMax() +
+                "\n    ---- End Scale ----\n";
+    }
+
+    public boolean validate() {
+    	//We use the approximation method here
+    	if(getByteExpression() == null) return true;
+    	
+        if(expression.equals("x") && byteExpression.equals("x")) return true;
+
+        double startValue = 5;
+        // convert real world value of "5"
+        double toReal = JEPUtil.evaluate(getExpression(), startValue);
+        double endValue = JEPUtil.evaluate(getByteExpression(), toReal);
+
+        // if real to byte doesn't equal 5, report conflict
+        if (Math.abs(endValue - startValue) > .001) return false;
+        else return true;
+    }
+    
+    public double approximateToByteFunction(double input, int storageType, boolean signed) {
+    	
+    	//If we just calculated this, return the last output
+    	if(lastApproximatedInput == input)
+    		return lastApproximatedOutput;
+    	
+    	long maxValue = (int) Math.pow(2, 8 * storageType);
+    	long minValue = 0;
+    	
+    	if(signed) {
+    		minValue = -maxValue/2;
+    		maxValue = maxValue/2 - 1;   				
+    	}
+    	else {
+    		maxValue--;
+    	}
+    	
+    	double error = 1;
+    	double lastError = 9999999;
+    	
+    	int currentStep = (int) ((maxValue - minValue) / 2);
+    	int stepSize = (int) (Math.pow(2, 8 * storageType) / 2);;
+    	double epsilon = 0.00001;
+    	double output = 0;
+    	
+    	while(stepSize > 0 && error > epsilon) {  		
+    		double minusValue = JEPUtil.evaluate(getExpression(), currentStep-stepSize);
+    		double plusValue = JEPUtil.evaluate(getExpression(), currentStep+stepSize);
+    		
+    		double plusError = Math.abs(plusValue - input);
+    		double minusError = Math.abs(minusValue - input);
+    		    		
+    		//Check if we need to go up or down
+    		if(plusError < minusError) {
+    			currentStep += stepSize;
+    			error = plusError;
+    		}
+    		else {
+    			currentStep -= stepSize;
+    			error = minusError;
+    		}
+  		
+    		if(error < lastError)
+    			output = currentStep;
+    		
+    		if(error < epsilon)
+    			break;
+    		
+			stepSize/=2;
+			lastError = error;
+    	}
+    	
+    	lastApproximatedInput = input;
+    	lastApproximatedOutput = output;
+    	
+    	//System.out.println("Input: " + input + " from approx: " + JEPUtil.evaluate(getExpression(), output));
+    	return currentStep;
+    }
+    
+    public void setCategory(String category) {
+        this.category = category;
     }
 
     public String getUnit() {
@@ -106,7 +189,10 @@ public class Scale implements Serializable {
     }
 
     public void setByteExpression(String byteExpression) {
-        this.byteExpression = byteExpression;
+    	if(byteExpression.isEmpty())
+    		this.byteExpression = null;
+    	else
+    		this.byteExpression = byteExpression;
     }
 
     public double getFineIncrement() {
@@ -117,6 +203,22 @@ public class Scale implements Serializable {
         this.fineIncrement = fineIncrement;
     }
 
+    /**
+     *  <b>category</b> is used to group like scalings, such as Metric,
+     *  Imperial, etc. (case insensitive).<br>
+     *  This is the value shown in the Table Tool bar scaling selection list.
+     * @return <b>category</b> name
+     */
+    public String getCategory() {
+        return category;
+    }
+
+    /**
+     * <b>name</b> is defined in a scalingbase element (case insensitive).<br>
+     * <b>name</b> is used by the base attribute in a scaling element definition
+     * to inherit from a scalingbase.
+     * @return <b>name</b> as defined in scalingbase
+     */
     public String getName() {
         return name;
     }
@@ -158,11 +260,26 @@ public class Scale implements Serializable {
 
             Scale otherScale = (Scale)other;
 
+            if( (null == this.getCategory() && null == otherScale.getCategory())
+                    || (this.getCategory().isEmpty() && otherScale.getCategory().isEmpty()) )
+            {
+                ;// Skip Category compare if Category is null or empty.
+            } else
+            {
+                if(!this.getCategory().equalsIgnoreCase(otherScale.getCategory()))
+                {
+                    return false;
+                }
+            }
+
             if( (null == this.getName() && null == otherScale.getName())
-                    || (this.getName().isEmpty() && otherScale.getName().isEmpty()) ) {
+                    || (this.getName().isEmpty() && otherScale.getName().isEmpty()) )
+            {
                 ;// Skip name compare if name is null or empty.
-            } else {
-                if(!this.getName().equalsIgnoreCase(otherScale.getName())) {
+            } else
+            {
+                if(!this.getName().equalsIgnoreCase(otherScale.getName()))
+                {
                     return false;
                 }
             }

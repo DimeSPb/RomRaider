@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2012 RomRaider.com
+ * Copyright (C) 2006-2022 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,33 +21,84 @@
 
 package com.romraider.maps;
 
+import static com.romraider.util.HexUtil.asBytes;
+
 import java.io.Serializable;
+import java.util.Arrays;
+
+import org.apache.log4j.Logger;
 
 public class RomID implements Serializable {
-
+    private static final Logger LOGGER = Logger.getLogger(RomID.class);
     private static final long serialVersionUID = 7272741253665400643L;
-    private String xmlid;               //ID stored in XML
-    private int    internalIdAddress;   //address of ECU version in image
-    private String internalIdString;    //ID stored in image
-    private String caseId;              //ECU hardware version
-    private String ecuId;
-    private String make;                //manufacturer
+	private String version;					//Version e.g. V0.45
+	private String author;					//Author name
+    private String xmlid;               	//ID stored in XML
+    private int    internalIdAddress;   	//address of ECU version in image
+    private String internalIdString = "";    //ID stored in image
+    private String caseId;              	//ECU hardware version
+    private String ecuId = "";
+    private String make;                	//manufacturer
     private String market;
     private String model;
-    private String subModel;            //trim, ie WRX
+    private String subModel;            	//trim, ie WRX
     private String transmission;
-    private String year = "Unknown";
-    private String flashMethod;         //flash method string used for ecuflash
-    private String memModel;            //model used for reflashing with ecuflash
-    private String editStamp;           //YYYY-MM-DD and v, the save count for this ROM
-    private int    fileSize;
-    private int    ramOffset;
-    private boolean obsolete;           // whether a more recent revision exists
-    private String checksum;            // checksum method used to validate ROM contents
+    private String year;
+    private String flashMethod;         	//flash method string used for ecuflash
+    private String memModel;            	//model used for reflashing with ecuflash
+    private String editStamp;           	//YYYY-MM-DD and v, the save count for this ROM
+    private int fileSize;
+    private int ramOffset;
 
+    private boolean noRamOffset;
+    private boolean obsolete;           	// whether a more recent revision exists
+    private String checksum;            	// checksum method used to validate ROM contents
+
+
+    public boolean checkMatch(byte[] file) {
+        try {
+        	if(internalIdString == null || internalIdString.length() == 0) return false;
+
+        	//If both fields are set to force, use this definition no matter what
+        	if(internalIdAddress == -1 && internalIdString.equalsIgnoreCase("force")) return true;
+
+            // romid is hex string
+            if (internalIdString.length() > 2
+                    && internalIdString.substring(0, 2).equalsIgnoreCase("0x")) {
+
+                // put romid in to byte array to check for match without "0x"
+                byte[] romIDBytes = asBytes(internalIdString.substring(2));
+
+                //If file is smaller than the address we are looking for, it can't be it
+                if(file.length < getInternalIdAddress() + romIDBytes.length) return false;
+
+                //Extract bytes at specified location in ROM
+                byte[] romBytes = Arrays.copyOfRange(file,
+                		getInternalIdAddress(), getInternalIdAddress() + romIDBytes.length);
+
+                //Check if bytes match
+                return Arrays.equals(romIDBytes, romBytes);
+            }
+            else {
+            	if(file.length < getInternalIdAddress() + getInternalIdString().length()) return false;
+
+                String ecuID = new String(file, getInternalIdAddress(),
+                        getInternalIdString().length());
+                return ecuID.equalsIgnoreCase(getInternalIdString());
+            }
+
+        } catch (Exception ex) {
+            // if any exception is encountered, names do not match or code is buggy :)
+            LOGGER.warn("Error finding match", ex);
+            return false;
+       }
+    }
+
+    @Override
     public String toString() {
         return String.format(
                 "%n   ---- RomID %s ----" +
+                "%n   Version: %s" +
                 "%n   Internal ID Address: %s" +
                 "%n   Internal ID String: %s" +
                 "%n   Case ID: %s" +
@@ -62,6 +113,7 @@ public class RomID implements Serializable {
                 "%n   Memory Model: %s" +
                 "%n   ---- End RomID %s ----",
                 xmlid,
+                version,
                 internalIdAddress,
                 internalIdString,
                 caseId,
@@ -75,11 +127,6 @@ public class RomID implements Serializable {
                 flashMethod,
                 memModel,
                 xmlid);
-    }
-
-    public RomID() {
-        this.internalIdString = "";
-        this.caseId = "";
     }
 
     public String getXmlid() {
@@ -186,11 +233,23 @@ public class RomID implements Serializable {
         this.memModel = memModel;
     }
 
+    public void setOffset(int offset) {
+    	this.ramOffset = -offset;
+    	noRamOffset=true;
+    }
+
+    public void disableRamOffset() {
+        noRamOffset = true;
+        ramOffset = 0;
+    }
+
     public int getRamOffset() {
         return ramOffset;
     }
 
     public void setRamOffset(int ramOffset) {
+    	if(noRamOffset) return;
+
         this.ramOffset = ramOffset;
     }
 
@@ -225,4 +284,20 @@ public class RomID implements Serializable {
     public String getChecksum() {
         return checksum;
     }
+
+	public void setVersion(String version) {
+		this.version = version;	
+	}
+	
+	public String getVersion() {
+		return version;
+	}
+
+	public String getAuthor() {
+		return author;
+	}
+
+	public void setAuthor(String author) {
+		this.author = author;
+	}
 }

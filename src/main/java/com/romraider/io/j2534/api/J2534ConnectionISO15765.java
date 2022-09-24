@@ -1,6 +1,6 @@
 /*
  * RomRaider Open-Source Tuning, Logging and Reflashing
- * Copyright (C) 2006-2014 RomRaider.com
+ * Copyright (C) 2006-2022 RomRaider.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 
 package com.romraider.io.j2534.api;
 
+import static com.romraider.util.HexUtil.asHex;
 import static com.romraider.util.ParamChecker.checkNotNull;
 import static org.apache.log4j.Logger.getLogger;
 
@@ -39,15 +40,33 @@ public final class J2534ConnectionISO15765 implements ConnectionManager {
     private int deviceId;
     private int msgId;
     private final long timeout;
+    private byte[] stopRequest;
 
     public J2534ConnectionISO15765(
             ConnectionProperties connectionProperties,
             String library) {
 
         api = null;
+        deviceId = -1;
+        msgId = -1;
         timeout = 2000;
         initJ2534(500000, library);
         LOGGER.info("J2534/ISO15765 connection initialized");
+    }
+
+    @Override
+    public void open(byte[] start, byte[] stop) {
+        checkNotNull(start, "start");
+        checkNotNull(stop, "stop");
+        this.stopRequest = stop;
+        if (LOGGER.isDebugEnabled())
+            LOGGER.debug(String.format("Start Diagnostics Request  ---> %s",
+                asHex(start)));
+        api.writeMsg(channelId, start, timeout, TxFlags.ISO15765_FRAME_PAD);
+        final byte[] response = api.readMsg(channelId, 1, timeout);
+        if (LOGGER.isDebugEnabled())
+            LOGGER.debug(String.format("Start Diagnostics Response <--- %s",
+                asHex(response)));
     }
 
     // Send request and wait for response with known length
@@ -73,12 +92,23 @@ public final class J2534ConnectionISO15765 implements ConnectionManager {
 
     @Override
     public void clearLine() {
-        //        LOGGER.debug("J2534/ISO15765 clearing buffers");
+        //        if (LOGGER.isDebugEnabled())
+        //            LOGGER.debug("J2534/ISO15765 clearing buffers");
         //        api.clearBuffers(channelId);
     }
 
     @Override
     public void close() {
+        if (stopRequest != null) {  // OBD has no open or close procedure
+            if (LOGGER.isDebugEnabled())
+                LOGGER.debug(String.format("Stop Diagnostics Request  ---> %s",
+                    asHex(stopRequest)));
+            api.writeMsg(channelId, stopRequest, timeout, TxFlags.ISO15765_FRAME_PAD);
+            final byte[] response = api.readMsg(channelId, 1, timeout);
+            if (LOGGER.isDebugEnabled())
+                LOGGER.debug(String.format("Stop Diagnostics Response <--- %s",
+                    asHex(response)));
+        }
         stopFcFilter();
         disconnectChannel();
         closeDevice();
@@ -103,12 +133,14 @@ public final class J2534ConnectionISO15765 implements ConnectionManager {
                     channelId, mask, pattern,
                     flowCntrl, TxFlags.ISO15765_FRAME_PAD);
 
-            LOGGER.debug(String.format(
+            if (LOGGER.isDebugEnabled())
+                LOGGER.debug(String.format(
                     "J2534/ISO15765 success: deviceId:%d, channelId:%d, msgId:%d",
                     deviceId, channelId, msgId));
         }
         catch (Exception e) {
-            LOGGER.debug(String.format(
+            if (LOGGER.isDebugEnabled())
+                LOGGER.debug(String.format(
                     "J2534/ISO15765 exception: deviceId:%d, channelId:%d, msgId:%d",
                     deviceId, channelId, msgId));
             close();
@@ -119,7 +151,6 @@ public final class J2534ConnectionISO15765 implements ConnectionManager {
     }
 
     private void version(int deviceId) {
-        if (!LOGGER.isDebugEnabled()) return;
         final Version version = api.readVersion(deviceId);
         LOGGER.info("J2534 Version => firmware: " + version.firmware +
                 ", dll: " + version.dll + ", api: " + version.api);
@@ -136,9 +167,11 @@ public final class J2534ConnectionISO15765 implements ConnectionManager {
     }
 
     private void stopFcFilter() {
+        if (msgId == -1) return;
         try {
             api.stopMsgFilter(channelId, msgId);
-            LOGGER.debug("J2534/ISO15765 stopped message filter:" + msgId);
+            if (LOGGER.isDebugEnabled())
+                LOGGER.debug("J2534/ISO15765 stopped message filter:" + msgId);
         } catch (Exception e) {
             LOGGER.warn("J2534/ISO15765 Error stopping msg filter: " +
                     e.getMessage());
@@ -146,9 +179,11 @@ public final class J2534ConnectionISO15765 implements ConnectionManager {
     }
 
     private void disconnectChannel() {
+        if (deviceId == -1) return;
         try {
             api.disconnect(channelId);
-            LOGGER.debug("J2534/ISO15765 disconnected channel:" + channelId);
+            if (LOGGER.isDebugEnabled())
+                LOGGER.debug("J2534/ISO15765 disconnected channel:" + channelId);
         } catch (Exception e) {
             LOGGER.warn("J2534/ISO15765 Error disconnecting channel: " +
                     e.getMessage());
@@ -157,10 +192,15 @@ public final class J2534ConnectionISO15765 implements ConnectionManager {
 
     private void closeDevice() {
         try {
-            api.close(deviceId);
-            LOGGER.info("J2534/ISO15765 closed connection to device:" + deviceId);
+            if (deviceId != -1) {
+                api.close(deviceId);
+                LOGGER.info("J2534/ISO15765 closed connection to device:" + deviceId);
+            }
         } catch (Exception e) {
             LOGGER.warn("J2534/ISO15765 Error closing device: " + e.getMessage());
+        }
+        finally {
+            deviceId = -1;
         }
     }
 }

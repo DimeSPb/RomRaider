@@ -91,7 +91,7 @@ public class RomTree extends JTree implements MouseListener {
         }
 
         if (e.getClickCount() >= SettingsManager.getSettings().getTableClickCount()
-                && selectedRow instanceof TableTreeNode) {
+                && selectedRow instanceof TableTreeNode && getRomNode((TableTreeNode)selectedRow) != null) {
             showTable((TableTreeNode)selectedRow);
         }
 
@@ -99,10 +99,7 @@ public class RomTree extends JTree implements MouseListener {
     }
 
     private void showTable(TableTreeNode selectedRow) {
-        TableTreeNode node = (TableTreeNode) selectedRow;
-        if (null != node) {
-            getEditor().displayTable(node.getFrame());
-        }
+        getEditor().displayTable(selectedRow);
     }
 
     private void setLastSelectedRom(Object selectedNode) {
@@ -118,7 +115,7 @@ public class RomTree extends JTree implements MouseListener {
         getEditor().refreshUI();
     }
 
-    private Rom getRomNode(Object currentNode){
+    public static Rom getRomNode(Object currentNode){
         if (currentNode == null) {
             return null;
         } else if(currentNode instanceof Rom) {
