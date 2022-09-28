@@ -135,13 +135,12 @@ public final class FileLoggerImpl implements FileLogger {
         if (!logDir.endsWith(File.separator)) {
             logDir += File.separator;
         }
-        logDir += "[" + messageListener.getEcuInit().getEcuId() + "]_";
         Settings settings = SettingsManager.getSettings();
         if (settings.getLogfileNameText() != null
                 && !settings.getLogfileNameText().isEmpty()) {
             logDir += settings.getLogfileNameText() + "_";
         }
-        logDir += dateFormat.format(new Date()) + ".csv";
+        logDir += dateFormat.format(new Date()) + "_[" + messageListener.getEcuInit().getEcuId() + "]" + ".csv";
         return logDir;
     }
 
