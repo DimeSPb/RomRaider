@@ -459,8 +459,8 @@ public final class QueryManagerImpl implements QueryManager {
     }
 
     private synchronized void updateQueryList() {
-        addQueries();
         removeQueries();
+        addQueries();
     }
 
     private void addQueries() {
