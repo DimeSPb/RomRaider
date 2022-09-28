@@ -445,6 +445,7 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
                     invokeLater(() -> {
                         EcuLogger.this.dmInit = dmInit;
                         dmLabel.setText("DimeMod v" + dmInit.getDimeModVersion());
+                        loadLoggerParams();
                         loadUserProfile(getSettings().getLoggerProfileFilePath());
                     });
                 }
@@ -803,7 +804,11 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
         for (ParameterRow row : rows) {
             LoggerData loggerData = row.getLoggerData();
             setDefaultUnits(profile, loggerData);
-            paramListTableModel.selectParam(loggerData, isSelectedOnLiveDataTab(profile, loggerData));
+            boolean selected = isSelectedOnLiveDataTab(profile, loggerData);
+            paramListTableModel.selectParam(loggerData, selected);
+            if (selected) {
+                liveDataUpdateHandler.registerData(loggerData);
+            }
         }
     }
 
@@ -812,7 +817,11 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
         for (ParameterRow row : rows) {
             LoggerData loggerData = row.getLoggerData();
             setDefaultUnits(profile, loggerData);
-            paramListTableModel.selectParam(loggerData, isSelectedOnGraphTab(profile, loggerData));
+            boolean selected = isSelectedOnGraphTab(profile, loggerData);
+            paramListTableModel.selectParam(loggerData, selected);
+            if (selected) {
+                liveDataUpdateHandler.registerData(loggerData);
+            }
         }
     }
 
@@ -821,7 +830,11 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
         for (ParameterRow row : rows) {
             LoggerData loggerData = row.getLoggerData();
             setDefaultUnits(profile, loggerData);
-            paramListTableModel.selectParam(loggerData, isSelectedOnDashTab(profile, loggerData));
+            boolean selected = isSelectedOnDashTab(profile, loggerData);
+            paramListTableModel.selectParam(loggerData, selected);
+            if (selected) {
+                liveDataUpdateHandler.registerData(loggerData);
+            }
         }
     }
 
