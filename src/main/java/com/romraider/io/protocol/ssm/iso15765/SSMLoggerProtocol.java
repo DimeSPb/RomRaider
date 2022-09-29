@@ -39,6 +39,9 @@ import com.romraider.logger.ecu.comms.manager.PollingState;
 import com.romraider.logger.ecu.comms.query.EcuInit;
 import com.romraider.logger.ecu.comms.query.EcuInitCallback;
 import com.romraider.logger.ecu.comms.query.EcuQuery;
+import com.romraider.logger.ecu.comms.query.EcuQueryImpl;
+import com.romraider.logger.ecu.definition.EcuAddressCANA8PatchedImpl;
+import com.romraider.logger.ecu.definition.EcuData;
 import com.romraider.logger.ecu.definition.Module;
 
 public final class SSMLoggerProtocol implements LoggerProtocol {
@@ -53,17 +56,23 @@ public final class SSMLoggerProtocol implements LoggerProtocol {
     }
 
     public byte[] constructReadAddressRequest(Module module, Collection<EcuQuery> queries) {
-        Collection<EcuQuery> filteredQueries = filterDuplicates(queries);
+        Collection<EcuQuery> filteredQueries = filterDuplicatesAndOptimize(queries);
         return protocol.constructReadAddressRequest(module, convertToByteAddresses(filteredQueries));
     }
 
     public byte[] constructReadAddressResponse(Collection<EcuQuery> queries, PollingState pollState) {
         checkNotNullOrEmpty(queries, "queries");
         // CAN_ID 0xE8 value1 value2 ... valueN
-        Collection<EcuQuery> filteredQueries = filterDuplicates(queries);
+        Collection<EcuQuery> filteredQueries = filterDuplicatesAndOptimize(queries);
         int numAddresses = 0;
         for (EcuQuery ecuQuery : filteredQueries) {
-            numAddresses += (ecuQuery.getBytes().length / ADDRESS_SIZE);
+            int responseLength = DATA_SIZE * (ecuQuery.getBytes().length / ADDRESS_SIZE);
+            if (ecuQuery.getBytes()[0] == (byte) 0xF2) {
+                responseLength *=2;
+            } else if (ecuQuery.getBytes()[0] == (byte) 0xF4) {
+                responseLength *=4;
+            }
+            numAddresses += responseLength;
         }
         return new byte[(numAddresses * DATA_SIZE + RESPONSE_NON_DATA_BYTES)];
     }
@@ -90,11 +99,17 @@ public final class SSMLoggerProtocol implements LoggerProtocol {
         checkNotNullOrEmpty(queries, "queries");
         checkNotNullOrEmpty(response, "response");
         byte[] responseData = extractResponseData(response);
-        Collection<EcuQuery> filteredQueries = filterDuplicates(queries);
+        Collection<EcuQuery> filteredQueries = filterDuplicatesAndOptimize(queries);
         Map<String, byte[]> addressResults = new HashMap<String, byte[]>();
         int i = 0;
         for (EcuQuery filteredQuery : filteredQueries) {
-            byte[] bytes = new byte[DATA_SIZE * (filteredQuery.getBytes().length / ADDRESS_SIZE)];
+            int responseLength = DATA_SIZE * (filteredQuery.getBytes().length / ADDRESS_SIZE);
+            if (filteredQuery.getBytes()[0] == (byte) 0xF2) {
+                responseLength *=2;
+            } else if (filteredQuery.getBytes()[0] == (byte) 0xF4) {
+                responseLength *=4;
+            }
+            byte[] bytes = new byte[responseLength];
             arraycopy(responseData, i, bytes, 0, bytes.length);
             addressResults.put(filteredQuery.getHex(), bytes);
             i += bytes.length;
@@ -120,11 +135,20 @@ public final class SSMLoggerProtocol implements LoggerProtocol {
         protocol.checkValidWriteResponse(data, response);
     }
 
-    private Collection<EcuQuery> filterDuplicates(Collection<EcuQuery> queries) {
-        Collection<EcuQuery> filteredQueries = new ArrayList<EcuQuery>();
+    private Collection<EcuQuery> filterDuplicatesAndOptimize(Collection<EcuQuery> queries) {
+        ArrayList<EcuQuery> filteredQueries = new ArrayList<>();
         for (EcuQuery query : queries) {
             if (!filteredQueries.contains(query)) {
                 filteredQueries.add(query);
+            }
+        }
+        for (int i = 0; i < filteredQueries.size(); i++) {
+            EcuQuery query = filteredQueries.get(i);
+            if (query.getLoggerData() instanceof EcuData) {
+                if (query.getBytes().length / ADDRESS_SIZE == 2 || query.getBytes().length / ADDRESS_SIZE == 4) {
+                    query = new EcuQueryImpl((EcuData) query.getLoggerData());
+                    ((EcuData) query.getLoggerData()).setAddress(new EcuAddressCANA8PatchedImpl(((EcuData) query.getLoggerData()).getAddress()));
+                }
             }
         }
         return filteredQueries;
@@ -133,7 +157,7 @@ public final class SSMLoggerProtocol implements LoggerProtocol {
     private byte[][] convertToByteAddresses(Collection<EcuQuery> queries) {
         int byteCount = 0;
         for (EcuQuery query : queries) {
-            byteCount += query.getAddresses().length;
+            byteCount += query.getBytes().length / ADDRESS_SIZE;
         }
         byte[][] addresses = new byte[byteCount][ADDRESS_SIZE];
         int i = 0;

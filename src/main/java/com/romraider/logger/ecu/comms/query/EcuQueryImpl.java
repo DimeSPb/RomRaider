@@ -26,18 +26,14 @@ import static com.romraider.util.ParamChecker.checkNotNull;
 
 public final class EcuQueryImpl implements EcuQuery {
     private final EcuData ecuData;
-    private final byte[] bytes;
-    private final String hex;
     private double response;
 
     public EcuQueryImpl(EcuData ecuData) {
         checkNotNull(ecuData);
         this.ecuData = ecuData;
-        bytes = ecuData.getAddress().getBytes();
-        hex = asHex(bytes);
     }
 
-    public LoggerData getLoggerData() {
+    public EcuData getLoggerData() {
         return ecuData;
     }
 
@@ -46,11 +42,11 @@ public final class EcuQueryImpl implements EcuQuery {
     }
 
     public byte[] getBytes() {
-        return bytes;
+        return ecuData.getAddress().getBytes();
     }
 
     public String getHex() {
-        return hex;
+        return asHex(ecuData.getAddress().getBytes());
     }
 
     public double getResponse() {

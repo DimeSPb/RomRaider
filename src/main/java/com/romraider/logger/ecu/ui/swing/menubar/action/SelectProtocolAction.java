@@ -33,12 +33,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
-import javax.swing.JButton;
-import javax.swing.JDialog;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTree;
-import javax.swing.ToolTipManager;
+import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
@@ -61,7 +56,7 @@ public final class SelectProtocolAction extends AbstractAction {
 
     @Override
     public void actionPerformed(ActionEvent actionEvent) {
-        try {        	
+        try {
             logger.stopLogging();
             new CommSettings();
         } catch (Exception e) {
@@ -122,7 +117,7 @@ public final class SelectProtocolAction extends AbstractAction {
         private Component buildTree() {
             final JTree tree = new JTree(buildNodeTree()) {
                 private static final long serialVersionUID = 4718749407995133513L;
-                
+
                 @Override
                 protected void setExpandedState(TreePath path, boolean state) {
                     if (state) {
@@ -145,8 +140,7 @@ public final class SelectProtocolAction extends AbstractAction {
                                             ((Transport) o).getId());
                                 }
                             }
-                        }
-                        else {
+                        } else {
                             return rb.getString("SPRATRANSPORT");
                         }
                     }
@@ -165,7 +159,7 @@ public final class SelectProtocolAction extends AbstractAction {
             tree.setShowsRootHandles(false);
             tree.getSelectionModel().setSelectionMode(
                     TreeSelectionModel.SINGLE_TREE_SELECTION);
-            
+
             final String currentProtocol = logger.getSettings().getLoggerProtocol();
             final String currentTransport = logger.getSettings().getTransportProtocol();
             for (int i = 0; i < tree.getRowCount(); i++) {
@@ -190,15 +184,14 @@ public final class SelectProtocolAction extends AbstractAction {
             tree.addTreeSelectionListener(new TreeSelectionListener() {
                 @Override
                 public void valueChanged(TreeSelectionEvent e) {
-                    
+
                     final DefaultMutableTreeNode node =
                             (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();
                     if (node != null) {
                         if (node.isLeaf()) {
                             selectButton.setEnabled(true);
                             selectedPath = tree.getSelectionPath();
-                        }
-                        else {
+                        } else {
                             selectButton.setEnabled(false);
                         }
                     }
@@ -219,17 +212,17 @@ public final class SelectProtocolAction extends AbstractAction {
                 final Map<Transport, Collection<Module>> transportMap =
                         protocolList.get(protocol);
                 final Set<Transport> trasnports = transportMap.keySet();
-                    for (Transport transport : trasnports) {
-                        final DefaultMutableTreeNode transportNode =
-                                new DefaultMutableTreeNode(transport);
-                        protocolNode.add(transportNode);
+                for (Transport transport : trasnports) {
+                    final DefaultMutableTreeNode transportNode =
+                            new DefaultMutableTreeNode(transport);
+                    protocolNode.add(transportNode);
                 }
             }
             return root;
         }
 
         private DefaultMutableTreeNode getTreeNode(TreePath path) {
-          return (DefaultMutableTreeNode) path.getLastPathComponent();
+            return (DefaultMutableTreeNode) path.getLastPathComponent();
         }
 
         private final void confirmSelection() {
@@ -250,9 +243,13 @@ public final class SelectProtocolAction extends AbstractAction {
                     logger.getSettings().setTransportProtocol(((Transport) o).getId());
 
                 }
-                
-                logger.updateElmSelectable();                          	
+
+                logger.updateElmSelectable();
                 logger.loadLoggerParams();
+                SwingUtilities.invokeLater(() -> {
+                            logger.loadUserProfile(logger.getSettings().getLoggerProfileFilePath());
+                        }
+                );
                 closeDialog();
             }
         }

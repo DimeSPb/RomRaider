@@ -23,6 +23,8 @@ public interface EcuData extends LoggerData {
 
     EcuAddress getAddress();
 
+    void setAddress(EcuAddress address);
+
     String getGroup();
 
     String getSubgroup();

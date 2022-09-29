@@ -1653,6 +1653,8 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
 	                    else {
 	                        getSettings().setLogExternalsOnly(true);
 	                    }
+                        loadLoggerParams();
+                        loadUserProfile(getSettings().getLoggerProfileFilePath());
 	                    startLogging();
 	                }
 	            });

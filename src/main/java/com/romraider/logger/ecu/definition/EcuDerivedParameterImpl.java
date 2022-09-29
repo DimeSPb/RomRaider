@@ -30,7 +30,7 @@ public final class EcuDerivedParameterImpl implements EcuParameter {
     private final String name;
     private final String description;
     private final EcuDerivedParameterConvertor[] convertors;
-    private final EcuAddress address;
+    private EcuAddress address;
     private final Set<ConvertorUpdateListener> listeners = new HashSet<ConvertorUpdateListener>();
     private int selectedConvertorIndex;
     private boolean selected;
@@ -68,6 +68,11 @@ public final class EcuDerivedParameterImpl implements EcuParameter {
     @Override
     public EcuAddress getAddress() {
         return address;
+    }
+
+    @Override
+    public void setAddress(EcuAddress address) {
+        this.address = address;
     }
 
     @Override

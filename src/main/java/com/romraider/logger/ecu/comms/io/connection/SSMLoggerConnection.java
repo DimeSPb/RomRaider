@@ -30,8 +30,11 @@ import java.util.Map;
 
 import com.romraider.io.protocol.Protocol;
 import com.romraider.io.protocol.ssm.iso9141.SSMProtocol;
+import com.romraider.logger.ecu.comms.query.EcuQueryImpl;
 import com.romraider.logger.ecu.comms.query.dimemod.DmInit;
 import com.romraider.logger.ecu.comms.query.dimemod.DmInitCallback;
+import com.romraider.logger.ecu.definition.*;
+import com.romraider.logger.ecu.exception.UnsupportedProtocolException;
 import org.apache.log4j.Logger;
 
 import com.romraider.Settings;
@@ -42,7 +45,6 @@ import com.romraider.logger.ecu.comms.manager.PollingState;
 import com.romraider.logger.ecu.comms.manager.PollingStateImpl;
 import com.romraider.logger.ecu.comms.query.EcuInitCallback;
 import com.romraider.logger.ecu.comms.query.EcuQuery;
-import com.romraider.logger.ecu.definition.Module;
 import com.romraider.util.SettingsManager;
 
 public final class SSMLoggerConnection implements LoggerConnection {
@@ -91,10 +93,13 @@ public final class SSMLoggerConnection implements LoggerConnection {
     }
 
     public void dmInit(DmInitCallback callback, Module module) {
-        final Protocol ssmProtocol = new SSMProtocol();
+        if (!(protocol.getProtocol() instanceof SSMProtocol) &&
+                !(protocol.getProtocol() instanceof com.romraider.io.protocol.ssm.iso15765.SSMProtocol)) {
+            return;
+        }
         DmInit dmInit = callback.getDmInit();
         if (dmInit == null) {
-            byte[] request = ssmProtocol.constructWriteAddressRequest(module, new byte[]{0x00, 0x00, 0x00}, (byte) 0xDE);
+            byte[] request = protocol.constructWriteAddressRequest(module, new byte[]{0x00, 0x00, 0x60}, (byte) 0xDE);
             if (LOGGER.isDebugEnabled())
                 LOGGER.debug(module + " Init DM Request  ---> " + asHex(request));
             byte[] response = manager.send(request);
@@ -107,14 +112,21 @@ public final class SSMLoggerConnection implements LoggerConnection {
                 return;
             }
             if (processedResponse[5] == (byte) 0xAD) {
-                request = ssmProtocol.constructReadAddressRequest(module, new byte[][]{new byte[]{0x00, 0x00, 0x00}});
+                request = protocol.getProtocol().constructReadAddressRequest(module, new byte[][]{new byte[]{0x00, 0x00, 0x60}});
                 response = manager.send(request);
                 processedResponse = protocol.preprocessResponse(request, response, new PollingStateImpl());
                 responseType = processedResponse[4];
                 if (responseType != SSMProtocol.READ_ADDRESS_RESPONSE) {
                     return;
                 }
-                int length = processedResponse[5] & 0xFF;
+                int length = (processedResponse[5] & 0xFF) << 8;
+                response = manager.send(request);
+                processedResponse = protocol.preprocessResponse(request, response, new PollingStateImpl());
+                responseType = processedResponse[4];
+                if (responseType != SSMProtocol.READ_ADDRESS_RESPONSE) {
+                    return;
+                }
+                length |= processedResponse[5] & 0xFF;
                 int startAddress = 0x00;
                 response = manager.send(request);
                 processedResponse = protocol.preprocessResponse(request, response, new PollingStateImpl());
@@ -138,30 +150,56 @@ public final class SSMLoggerConnection implements LoggerConnection {
                 }
                 startAddress |= processedResponse[5] & 0xFF;
 
-                request = ssmProtocol.constructWriteAddressRequest(module, new byte[]{0x00, 0x00, 0x00}, (byte) 0x00);
+                request = protocol.constructWriteAddressRequest(module, new byte[]{0x00, 0x00, 0x00}, (byte) 0x00);
                 response = manager.send(request);
                 processedResponse = protocol.preprocessResponse(request, response, new PollingStateImpl());
                 responseType = processedResponse[4];
                 if (responseType != SSMProtocol.WRITE_ADDRESS_RESPONSE) {
-                    // error
-                    return;
+                    // error, skipping for CAN...
+                    if (!(protocol.getProtocol() instanceof com.romraider.io.protocol.ssm.iso15765.SSMProtocol)) {
+                        return;
+                    }
                 }
 
-                final int MAX_RESPONSE_SIZE = 96;
+                int maxResponseSize = 96;
                 int remaining = length;
                 byte[] dmInitBytes = new byte[length];
                 int addr = startAddress;
-                while (remaining > 0) {
-                    request = ssmProtocol.constructReadMemoryRequest(module,
-                            new byte[]{(byte) (addr >> 16), (byte) (addr >> 8), (byte) addr},
-                            Math.min(remaining, MAX_RESPONSE_SIZE)
-                    );
-                    response = manager.send(request);
-                    processedResponse = protocol.preprocessResponse(request, response, new PollingStateImpl());
-                    int readBytes = processedResponse.length - 6;
-                    System.arraycopy(processedResponse, 5, dmInitBytes, dmInitBytes.length - remaining, readBytes);
-                    remaining -= readBytes;
-                    addr += readBytes;
+                try {
+                    while (remaining > 0) {
+                        request = protocol.getProtocol().constructReadMemoryRequest(module,
+                                new byte[]{(byte) (addr >> 16), (byte) (addr >> 8), (byte) addr},
+                                Math.min(remaining, maxResponseSize)
+                        );
+                        response = manager.send(request);
+                        processedResponse = protocol.preprocessResponse(request, response, new PollingStateImpl());
+                        int readBytes = processedResponse.length - 6;
+                        System.arraycopy(processedResponse, 5, dmInitBytes, dmInitBytes.length - remaining, readBytes);
+                        remaining -= readBytes;
+                        addr += readBytes;
+                    }
+                } catch (UnsupportedProtocolException e) {
+                    // try CAN A8 reading
+                    maxResponseSize = 32;
+                    int idx = 0;
+                    while (remaining > 0) {
+                        byte[][] addresses = new byte[Math.min(maxResponseSize, remaining)][3];
+                        for (byte[] barr : addresses) {
+                            barr[0] = (byte) (addr >> 16);
+                            barr[1] = (byte) (addr >> 8);
+                            barr[2] = (byte) addr;
+                            addr++;
+                            remaining--;
+                            if (remaining == 0) {
+                                break;
+                            }
+                        }
+                        request = protocol.getProtocol().constructReadAddressRequest(module, addresses);
+                        response = manager.send(request);
+                        processedResponse = protocol.preprocessResponse(request, response, new PollingStateImpl());
+                        int readBytes = processedResponse.length - 5;
+                        System.arraycopy(processedResponse, 5, dmInitBytes, dmInitBytes.length - remaining - readBytes, readBytes);
+                    }
                 }
 
                 dmInit = new DmInit(dmInitBytes);
@@ -174,7 +212,7 @@ public final class SSMLoggerConnection implements LoggerConnection {
             int cerrAddr = dmInit.getCurrentErrorCodesAddress();
             int merrAddr = dmInit.getMemorizedErrorCodesAddress();
 
-            byte[] request = ssmProtocol.constructReadAddressRequest(module, new byte[][]{
+            byte[] request = protocol.getProtocol().constructReadAddressRequest(module, new byte[][]{
                     getThreeByteAddr(afAddr),
                     getThreeByteAddr(afAddr + 1),
                     getThreeByteAddr(cerrAddr),

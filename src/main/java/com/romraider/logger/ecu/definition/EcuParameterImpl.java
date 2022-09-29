@@ -30,7 +30,7 @@ public final class EcuParameterImpl implements EcuParameter {
     private final String id;
     private final String name;
     private final String description;
-    private final EcuAddress address;
+    private EcuAddress address;
     private final String group;
     private final String subgroup;
     private final int groupsize;
@@ -76,6 +76,11 @@ public final class EcuParameterImpl implements EcuParameter {
     @Override
     public EcuAddress getAddress() {
         return address;
+    }
+
+    @Override
+    public void setAddress(EcuAddress address) {
+        this.address = address;
     }
 
     @Override
