@@ -280,25 +280,37 @@ public class DmInit {
         params.add(getUInt32Parameter("DM901", "DimeMod: Errors present (memorized)", "Errors present if not zero", memorizedErrorCodesAddress, "n", "x!=0"));
 
         if (isAfrEnabled) {
-            params.add(getFloatParameter("DM910", "DimeMod: AFR", "Air-to-Fuel ratio", afrAddress, "lambda", "x", 0.75f, 1.5f, 0.05f));
-            params.add(getFloatParameter("DM920", "DimeMod: AFR Voltage", "Voltage", afrVoltageAddress, "v", "x", 0f, 5f, 0.5f));
+            params.add(getFloatParameter("DM902", "DimeMod: AFR", "Air-to-Fuel ratio", afrAddress, "lambda", "x", 0.75f, 1.5f, 0.05f));
+            params.add(getFloatParameter("DM903", "DimeMod: AFR Voltage", "Voltage", afrVoltageAddress, "v", "x", 0f, 5f, 0.5f));
         }
         if (isEgtEnabled) {
-            params.add(getFloatTempParameter("DM911", "DimeMod: EGT", "Exhaust Gas Temp", egtAddress));
-            params.add(getFloatParameter("DM921", "DimeMod: EGT Voltage", "Voltage", egtVoltageAddress, "v", "x", 0f, 5f, 0.5f));
+            params.add(getFloatTempParameter("DM904", "DimeMod: EGT", "Exhaust Gas Temp", egtAddress));
+            params.add(getFloatParameter("DM905", "DimeMod: EGT Voltage", "Voltage", egtVoltageAddress, "v", "x", 0f, 5f, 0.5f));
         }
         if (isFuelPressureEnabled) {
-            params.add(getFloatPressureParameter("DM912", "DimeMod: Fuel Pressure", "Fuel Pressure", fuelPressAddress));
-            params.add(getFloatParameter("DM922", "DimeMod: Fuel Pressure Voltage", "Voltage", fuelPressVoltageAddress, "v", "x", 0f, 5f, 0.5f));
-            params.add(getFloatPressureParameter("DM913", "DimeMod: Fuel Differential Pressure", "Fuel Differential Pressure", fuelDiffPressAddress));
+            params.add(getFloatPressureParameter("DM906", "DimeMod: Fuel Pressure", "Fuel Pressure", fuelPressAddress));
+            params.add(getFloatParameter("DM907", "DimeMod: Fuel Pressure Voltage", "Voltage", fuelPressVoltageAddress, "v", "x", 0f, 5f, 0.5f));
+            params.add(getFloatPressureParameter("DM908", "DimeMod: Fuel Differential Pressure", "Fuel Differential Pressure", fuelDiffPressAddress));
         }
         if (isBackPressureEnabled) {
-            params.add(getFloatPressureParameter("DM914", "DimeMod: Backpressure", "BackPressure", backPressAddress));
-            params.add(getFloatParameter("DM924", "DimeMod: Backpressure Voltage", "Voltage", backPressVoltageAddress, "v", "x", 0f, 5f, 0.5f));
+            params.add(getFloatPressureParameter("DM909", "DimeMod: Backpressure", "BackPressure", backPressAddress));
+            params.add(getFloatParameter("DM910", "DimeMod: Backpressure Voltage", "Voltage", backPressVoltageAddress, "v", "x", 0f, 5f, 0.5f));
         }
         if (isFlexFuelEnabled) {
-            params.add(getFloatParameter("DM915", "DimeMod: FlexFuel Ethanol Content", "Ethanol content", ethanolContentAddress, "%", "x", 0f, 100f, 5f));
-            params.add(getFloatParameter("DM925", "DimeMod: FlexFuel Ethanol Content Voltage", "Voltage", ethanolContentVoltageAddress, "v", "x", 0f, 5f, 0.5f));
+            params.add(getFloatParameter("DM911", "DimeMod: FlexFuel Ethanol Content", "Ethanol content", ethanolContentAddress, "%", "x", 0f, 100f, 5f));
+            params.add(getFloatParameter("DM912", "DimeMod: FlexFuel Ethanol Content Voltage", "Voltage", ethanolContentVoltageAddress, "v", "x", 0f, 5f, 0.5f));
+        }
+        if (isFailsafeExternalTriggerEnabled) {
+            params.add(getUInt8Parameter("DM913", "DimeMod: MapSwitch Failsafe Mode External Trigger", "Failsafe Trigger State", extFailsafeStateAddress, "state", "x"));
+//            params.add(getUInt8Parameter("DM966", "DimeMod: MapSwitch Failsafe Mode External Trigger Timer", "Failsafe Trigger State", extFailsafeStateAddress + 2, "ticks", "x"));
+            params.add(getFloatParameter("DM914", "DimeMod: MapSwitch Failsafe Mode External Trigger Voltage", "Voltage", extFailsafeVoltageAddress, "v", "x", 0f, 5f, 0.5f));
+        }
+        if (isMapSwitchExternalTriggerEnabled) {
+            params.add(getFloatParameter("DM915", "DimeMod: MapSwitch External Trigger Voltage", "Voltage", extMapSwitchVoltageAddress, "v", "x", 0f, 5f, 0.5f));
+        }
+        if (isFailsafeExternalTriggerEnabled) {
+            params.add(getUInt8Parameter("DM916", "DimeMod: FFS External Trigger", "FFS Trigger State", ffsTriggerStateAddress, "state", "x"));
+            params.add(getFloatParameter("DM917", "DimeMod: FFS External Trigger Voltage", "Voltage", ffsTriggerVoltageAddress, "v", "x", 0f, 5f, 0.5f));
         }
 
         if (isKsByCylsEnabled) {
@@ -313,12 +325,14 @@ public class DmInit {
         }
         if (isMapSwitchEnabled) {
             params.add(getUInt8Parameter("DM010", "DimeMod: MapSwitch Selected Set", "Current MapSwitch set num", msCurrentSetNumberAddress, "set", "x+1"));
-            params.add(getUInt8Parameter("DM011", "DimeMod: MapSwitch Failsafe State", "Current MapSwitch failsafe state", msCurrentSetNumberAddress, "#", "x"));
-            params.add(getUInt8Parameter("DM012", "DimeMod: MapSwitch Failsafe Memorized States", "Memorized MapSwitch failsafe states", msCurrentSetNumberAddress, "#", "x"));
-            params.add(getFloatParameter("DM013", "DimeMod: Flex Fuel blend value (Boost)", "Blend Value (Boost)", flexFuelBoostSetBlendAddress, "set", 0, 4, 0.1f));
-            params.add(getFloatParameter("DM014", "DimeMod: Flex Fuel blend value (Fuel)", "Blend Value (Fuel)", flexFuelFuelingSetBlendAddress, "set", 0, 4, 0.1f));
-            params.add(getFloatParameter("DM015", "DimeMod: Flex Fuel blend value (Ignition)", "Blend Value (Ignition)", flexFuelIgnitionSetBlendAddress, "set", 0, 4, 0.1f));
-            params.add(getFloatParameter("DM016", "DimeMod: Flex Fuel blend value (Other)", "Blend Value (Other)", flexFuelOtherSetBlendAddress, "set", 0, 4, 0.1f));
+            params.add(getUInt8Parameter("DM011", "DimeMod: MapSwitch Failsafe State", "Current MapSwitch failsafe state", msFailsafeStateAddress, "#", "x"));
+            params.add(getUInt8Parameter("DM012", "DimeMod: MapSwitch Failsafe Memorized States", "Memorized MapSwitch failsafe states", msFailsafeMemorizedStateAddress, "#", "x"));
+            if (isFlexFuelEnabled) {
+                params.add(getFloatParameter("DM013", "DimeMod: Flex Fuel blend value (Boost)", "Blend Value (Boost)", flexFuelBoostSetBlendAddress, "set", 0, 4, 0.1f));
+                params.add(getFloatParameter("DM014", "DimeMod: Flex Fuel blend value (Fuel)", "Blend Value (Fuel)", flexFuelFuelingSetBlendAddress, "set", 0, 4, 0.1f));
+                params.add(getFloatParameter("DM015", "DimeMod: Flex Fuel blend value (Ignition)", "Blend Value (Ignition)", flexFuelIgnitionSetBlendAddress, "set", 0, 4, 0.1f));
+                params.add(getFloatParameter("DM016", "DimeMod: Flex Fuel blend value (Other)", "Blend Value (Other)", flexFuelOtherSetBlendAddress, "set", 0, 4, 0.1f));
+            }
             params.add(getFloatParameter("DM017", "DimeMod: Injector Flow value", "Injector Flow Value", flexFuelInjFlowValueAddress, "cc/min", "2707090/x", 0, 4, 0.1f));
         }
         if (isSpeedDensityEnabled) {
