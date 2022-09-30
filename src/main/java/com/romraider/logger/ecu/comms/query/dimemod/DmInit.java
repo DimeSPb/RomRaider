@@ -24,10 +24,7 @@ import com.romraider.logger.ecu.definition.*;
 import com.romraider.logger.ecu.ui.handler.dash.GaugeMinMax;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
 public class DmInit {
     private final byte[] dmInitBytes;
@@ -276,7 +273,7 @@ public class DmInit {
         boolean isFailsafeExternalTriggerEnabled = (activeFeatures & 0x80) != 0;
 
         params.clear();
-        params.add(getUInt32Parameter("DM900", "DimeMod: Errors present (current)", "Errors present if not zero", currentErrorCodesAddress, "n", "if (x!=0){\"TRUE\"}else{\"FALSE\"}"));
+        params.add(getUInt32Parameter("DM900", "DimeMod: Errors present (current)", "Errors present if not zero", currentErrorCodesAddress, "n", "(x!=0)"));
         params.add(getUInt32Parameter("DM901", "DimeMod: Errors present (memorized)", "Errors present if not zero", memorizedErrorCodesAddress, "n", "x!=0"));
 
         if (isAfrEnabled) {
@@ -339,10 +336,10 @@ public class DmInit {
             params.add(getFloatTempParameter("DM020", "DimeMod: SD Port Temp", "Estimated intake port temp", sdPortTempAddress));
             params.add(getFloatParameter("DM021", "DimeMod: SD IAT Compensation", "VE IAT Compensation", sdIatCompensationAddress, "%", "(x-1)*100", -50, 150, 25));
             params.add(getFloatParameter("DM022", "DimeMod: SD Tip-In Compensation", "VE Tip-In Compensation", sdTipInCompensationAddress, "%", "(x-1)*100", -50, 200, 25));
-            params.add(getFloatParameter("DM023", "DimeMod: SD Atm. Press. Compensation", "VE Atmospheric Pressure Compensation", sdAtmPressCompensationAddress, "%", "x*100", 0, 300, 25));
+            params.add(getFloatParameter("DM023", "DimeMod: SD Atm. Press. Compensation", "VE Atmospheric Pressure Compensation", sdAtmPressCompensationAddress, "%", "(x-1)*100", 0, 300, 25));
             params.add(getFloatParameter("DM024", "DimeMod: SD Blending Ratio", "SD Blending Ratio", sdBlendingRatioAddress, "%", "x*100", 0, 100, 10));
-            params.add(getFloatParameter("DM025", "DimeMod: SD VE Base", "Base VE (no compensations applied)", sdBlendingRatioAddress, "%", "x", 0, 100, 10));
-            params.add(getFloatParameter("DM026", "DimeMod: SD VE Final", "Final VE (all compensations applied)", sdBlendingRatioAddress, "%", "x", 0, 100, 10));
+            params.add(getFloatParameter("DM025", "DimeMod: SD VE Base", "Base VE (no compensations applied)", sdBaseVeAddress, "%", "x", 0, 100, 10));
+            params.add(getFloatParameter("DM026", "DimeMod: SD VE Final", "Final VE (all compensations applied)", sdFinalVeAddress, "%", "x", 0, 100, 10));
 
             params.add(getFloatParameter("DM027", "DimeMod: AlphaN IAT Compensation", "AnphaN IAT Compensation", alphaNIatCompensationAddress, "%", "(x-1)*100", -50, 200, 25));
             params.add(getFloatParameter("DM028", "DimeMod: AlphaN Atm. Press. Compensation", "VE Atmospheric Pressure Compensation", alphaNAtmPressCompensationAddress, "%", "(x-1)*100", -50, 200, 25));
@@ -448,4 +445,96 @@ public class DmInit {
     public int getActiveFeaturesAddress() {
         return activeFeaturesAddress;
     }
+
+    public int getRuntimeCurrentErrors() {
+        return runtimeCurrentErrors;
+    }
+
+    public int getRuntimeMemErrors() {
+        return runtimeMemErrors;
+    }
+
+    public int getRuntimeActiveFeatures() {
+        return runtimeActiveFeatures;
+    }
+
+    public Set<String> decodeDmCurrentErrors() {
+        return decodeErrors(runtimeCurrentErrors);
+    }
+
+    public Set<String> decodeDmMemorizedErrors() {
+        return decodeErrors(runtimeMemErrors);
+    }
+
+    private Set<String> decodeErrors(int errors) {
+        Set<String> result = new TreeSet<>();
+        if ((errors & 0x00000001) != 0) {
+            result.add("DM0001: Table Metadata Buffer Overflow");
+        }
+        if ((errors & 0x00000002) != 0) {
+            result.add("DM0002: Table Metadata Wrong Table");
+        }
+        if ((errors & 0x00000004) != 0) {
+            result.add("DM0003: Voltage Too Low");
+        }
+        if ((errors & 0x00000008) != 0) {
+            result.add("DM0004: Voltage Too High");
+        }
+        if ((errors & 0x00000010) != 0) {
+            result.add("DM0010: TGV Left Input Configuration Problem");
+        }
+        if ((errors & 0x00000020) != 0) {
+            result.add("DM0011: TGV Right Input Configuration Problem");
+        }
+        if ((errors & 0x00000040) != 0) {
+            result.add("DM0012: Rear O2 Input Configuration Problem");
+        }
+        if ((errors & 0x00000080) != 0) {
+            result.add("DM0013: MAF Input Configuration Problem");
+        }
+        /*
+        if ((errors & 0x00000100) != 0) {
+            result.add("DM0020: CAN ADC 01 Input Configuration Problem");
+        }
+        */
+        if ((errors & 0x00010000) != 0) {
+            result.add("DM0030: AFR Related Problem");
+        }
+        if ((errors & 0x00020000) != 0) {
+            result.add("DM0031: EGT Related Problem");
+        }
+        if ((errors & 0x00040000) != 0) {
+            result.add("DM0032: Fuel Pressure Related Problem");
+        }
+        if ((errors & 0x00080000) != 0) {
+            result.add("DM0033: Backpressure Related Problem");
+        }
+        if ((errors & 0x00100000) != 0) {
+            result.add("DM0034: FlexFuel Ethanol Content Sensor Related Problem");
+        }
+        if ((errors & 0x00200000) != 0) {
+            result.add("DM0035: FFS External Trigger Related Problem");
+        }
+        if ((errors & 0x00400000) != 0) {
+            result.add("DM0036: MapSwitch External Trigger Related Problem");
+        }
+        if ((errors & 0x00800000) != 0) {
+            result.add("DM0037: Failsafe External Trigger Related Problem");
+        }
+        if ((errors & 0x10000000) != 0) {
+            result.add("DM1000: Selected Custom Sensor is not configured");
+        }
+        if ((errors & 0x20000000) != 0) {
+            result.add("DM2000: Selected Input is not available");
+        }
+        if ((errors & 0x40000000) != 0) {
+            result.add("DM3000: ECU Link License Error");
+        }
+        if ((errors & 0x80000000) != 0) {
+            result.add("DM9999: Internal Logic Error");
+        }
+
+        return result;
+    }
+
 }

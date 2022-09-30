@@ -24,13 +24,8 @@ import static javax.swing.JOptionPane.ERROR_MESSAGE;
 import static javax.swing.JOptionPane.INFORMATION_MESSAGE;
 import static javax.swing.JOptionPane.showMessageDialog;
 
-import java.awt.BorderLayout;
-import java.awt.Font;
-import java.awt.GridLayout;
-import java.awt.Point;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.KeyEvent;
+import java.awt.*;
+import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -38,20 +33,16 @@ import java.io.FileWriter;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.ResourceBundle;
+import java.util.Set;
 
 import javax.imageio.ImageIO;
-import javax.swing.BorderFactory;
-import javax.swing.BoxLayout;
-import javax.swing.JButton;
-import javax.swing.JDialog;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JTable;
+import javax.swing.*;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableColumn;
 
 import com.romraider.logger.ecu.EcuLogger;
 import com.romraider.logger.ecu.comms.query.EcuQuery;
+import com.romraider.logger.ecu.ui.swing.tools.tablemodels.DmReadCodesTableModel;
 import com.romraider.logger.ecu.ui.swing.tools.tablemodels.ReadCodesTableModel;
 import com.romraider.util.ResourceUtil;
 import com.romraider.util.SettingsManager;
@@ -60,7 +51,7 @@ public final class ReadCodesResultsPanel extends JPanel {
     private static final long serialVersionUID = -3180488605471088911L;
     private static final ResourceBundle rb = new ResourceUtil().getBundle(
             ReadCodesResultsPanel.class.getName());
-    private static final JPanel resultsPanel = new JPanel();
+    private final JPanel resultsPanel = new JPanel();
     private static final String DT_FORMAT = "%1$tY%1$tm%1$td-%1$tH%1$tM%1$tS";
 
     private ReadCodesResultsPanel(ArrayList<EcuQuery> dtcSet) {
@@ -98,10 +89,45 @@ public final class ReadCodesResultsPanel extends JPanel {
         add(resultsPanel);
     }
 
+    private ReadCodesResultsPanel(Set<String> dtcSet, Set<String> dtcMemSet) {
+        super(new GridLayout(1,0));
+
+        final DmReadCodesTableModel dtcModel = new DmReadCodesTableModel(dtcSet, dtcMemSet);
+        final JTable table = new JTable(dtcModel);
+
+        TableColumn column = null;
+        for (int i = 0; i < table.getColumnCount(); i++) {
+            column = table.getColumnModel().getColumn(i);
+            if (i == 0) {
+                column.setPreferredWidth(360);
+            } else {
+                column.setPreferredWidth(80);
+            }
+        }
+        table.setAutoCreateRowSorter(true);
+        table.getRowSorter().toggleSortOrder(0);
+        table.setColumnSelectionAllowed(false);
+        table.setRowSelectionAllowed(true);
+        table.getTableHeader().setReorderingAllowed(false);
+
+        resultsPanel.setLayout(new BorderLayout());
+        final JTableHeader th = table.getTableHeader();
+        final Font thFont = th.getFont();
+        final Font thBoldFont = new Font(
+                thFont.getFamily(),
+                Font.BOLD,
+                thFont.getSize());
+        th.setFont(thBoldFont);
+        resultsPanel.add(th, BorderLayout.PAGE_START);
+        resultsPanel.add(table, BorderLayout.CENTER);
+        add(resultsPanel);
+    }
+
     public final static void displayResultsPane(
             EcuLogger logger,
-            ArrayList<EcuQuery> dtcSet) {
-        final JDialog frame = new JDialog(logger, rb.getString("READRESULTS"));
+            ArrayList<EcuQuery> dtcSet,
+            Set<String> dmCurrentCodes, Set<String> dmMemCodes) {
+        final JDialog frame = new JDialog((Frame)null, rb.getString("READRESULTS"), true);
         frame.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         final JPanel mainPanel = new JPanel();
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.PAGE_AXIS));
@@ -109,7 +135,16 @@ public final class ReadCodesResultsPanel extends JPanel {
         final ReadCodesResultsPanel resultsPane =
                 new ReadCodesResultsPanel(dtcSet);
         mainPanel.add(resultsPane);
-        mainPanel.add(createSaveReultsPanel(dtcSet));
+        if (dmCurrentCodes != null || dmMemCodes != null) {
+            JSeparator sep = new JSeparator(JSeparator.HORIZONTAL);
+            mainPanel.add(sep);
+            JLabel dmLabel = new JLabel("DimeMod errors:", SwingConstants.CENTER);
+            mainPanel.add(dmLabel);
+            final ReadCodesResultsPanel dmResultsPane =
+                    new ReadCodesResultsPanel(dmCurrentCodes, dmMemCodes);
+            mainPanel.add(dmResultsPane);
+        }
+        mainPanel.add(createSaveReultsPanel(dtcSet, resultsPane));
         frame.setContentPane(mainPanel);
         final Point loggerLocation = logger.getLocation();
         final Point dialogLocation = new Point();
@@ -122,8 +157,14 @@ public final class ReadCodesResultsPanel extends JPanel {
         frame.setVisible(true);
     }
 
-    private final static JPanel createSaveReultsPanel(
-            final ArrayList<EcuQuery> dtcSet) {
+    public final static void displayResultsPane(
+            EcuLogger logger,
+            ArrayList<EcuQuery> dtcSet) {
+        displayResultsPane(logger, dtcSet, null, null);
+    }
+
+    private static final JPanel createSaveReultsPanel(
+            final ArrayList<EcuQuery> dtcSet, ReadCodesResultsPanel pane) {
 
         final JPanel basePanel = new JPanel(new BorderLayout());
         basePanel.setBorder(BorderFactory.createTitledBorder(
@@ -148,7 +189,7 @@ public final class ReadCodesResultsPanel extends JPanel {
         toImage.addActionListener(new ActionListener() {
             @Override
             public final void actionPerformed(ActionEvent actionEvent) {
-                saveTableImage();
+                saveTableImage(pane);
             }
         });
         controlPanel.add(toFile);
@@ -202,7 +243,7 @@ public final class ReadCodesResultsPanel extends JPanel {
         }
     }
 
-    private static final void saveTableImage() {
+    private final static void saveTableImage(ReadCodesResultsPanel resultsPanel) {
         final BufferedImage resultsImage = new BufferedImage(
                 resultsPanel.getWidth(),
                 resultsPanel.getHeight(),

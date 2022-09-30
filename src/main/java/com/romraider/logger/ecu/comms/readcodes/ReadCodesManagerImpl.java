@@ -23,11 +23,13 @@ import static com.romraider.logger.ecu.comms.io.connection.LoggerConnectionFacto
 import static com.romraider.util.ParamChecker.checkNotNull;
 
 import java.text.MessageFormat;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.ResourceBundle;
+import java.util.*;
 
+import com.romraider.logger.ecu.comms.query.EcuQueryData;
+import com.romraider.logger.ecu.comms.query.dimemod.DmInit;
+import com.romraider.logger.ecu.comms.query.dimemod.DmInitCallback;
+import com.romraider.logger.ecu.definition.EcuData;
+import com.romraider.logger.ecu.definition.EcuParameterImpl;
 import org.apache.log4j.Logger;
 
 import com.romraider.Settings;
@@ -123,13 +125,38 @@ public final class ReadCodesManagerImpl implements ReadCodesManager {
                         dtcSet.add(query);
                     }
                 }
-                if (dtcSet.isEmpty()) {
+
+                final Integer[] dmCodes = {null};
+                final Integer[] dmMemCodes = {null};
+                if (logger.getDmInit() != null) {
+                    connection.dmInit(new DmInitCallback() {
+                        @Override
+                        public void callback(DmInit dmInit) {
+                            dmCodes[0] = dmInit.getRuntimeCurrentErrors();
+                            dmMemCodes[0] = dmInit.getRuntimeMemErrors();
+                        }
+
+                        @Override
+                        public boolean needToInit() {
+                            return logger.getDmInit() == null;
+                        }
+
+                        @Override
+                        public DmInit getDmInit() {
+                            return logger.getDmInit();
+                        }
+                    }, settings.getDestinationTarget());
+                }
+
+                if (dtcSet.isEmpty() && dmCodes[0] == null && dmMemCodes[0] == null) {
                     LOGGER.info("Success reading " + target +
                             " DTC codes, none set");
                     return -1;
                 }
                 else {
-                    ReadCodesResultsPanel.displayResultsPane(logger, dtcSet);
+                    Set<String> dmCodesStr = logger.getDmInit().decodeDmCurrentErrors();
+                    Set<String> dmMemCodesStr = logger.getDmInit().decodeDmMemorizedErrors();
+                    ReadCodesResultsPanel.displayResultsPane(logger, dtcSet, dmCodesStr, dmMemCodesStr);
                 }
                 return 1;
             }

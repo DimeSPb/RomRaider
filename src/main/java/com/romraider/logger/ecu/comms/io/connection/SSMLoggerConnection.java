@@ -243,14 +243,14 @@ public final class SSMLoggerConnection implements LoggerConnection {
     }
 
     private static int getShortFromResponse(byte[] processedResponse, int offset) {
-        return (processedResponse[offset] << 8) +
-                processedResponse[offset + 1];
+        return ((processedResponse[offset] & 0xFF) << 8) +
+                (processedResponse[offset + 1] & 0xFF);
     }
     private static int getIntFromResponse(byte[] processedResponse, int offset) {
-        return (processedResponse[offset] << 24) +
-                (processedResponse[offset + 1] << 16) +
-                (processedResponse[offset + 2] << 8) +
-                processedResponse[offset + 3];
+        return ((processedResponse[offset] & 0xFF) << 24) +
+                ((processedResponse[offset + 1] & 0xFF) << 16) +
+                ((processedResponse[offset + 2] & 0xFF) << 8) +
+                (processedResponse[offset + 3] & 0xFF);
     }
 
     private static byte[] getThreeByteAddr(int afAddr) {

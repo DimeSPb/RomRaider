@@ -1430,7 +1430,7 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
         playButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent actionEvent) {
-                ThreadUtil.runAsDaemon(new Runnable() {
+                runAsDaemon(new Runnable() {
                     @Override
                     public void run() {
                         PlaybackManagerImpl playbackManager = new PlaybackManagerImpl(ecuParams, liveDataUpdateHandler, graphUpdateHandler, dashboardUpdateHandler, mafUpdateHandler, dynoUpdateHandler,
@@ -2150,8 +2150,8 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
         JPanel panel = new JPanel();
         panel.setLayout(new BorderLayout());
         panel.setBorder(BorderFactory.createEtchedBorder());
-        panel.add(progressBar, BorderLayout.CENTER);
-        panel.add(startText, BorderLayout.SOUTH);
+        panel.add(progressBar, CENTER);
+        panel.add(startText, SOUTH);
         startStatus.getContentPane().add(panel);
         startStatus.pack();
         startStatus.setVisible(true);
@@ -2228,4 +2228,7 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
     }
 
 
+    public DmInit getDmInit() {
+        return dmInit;
+    }
 }
