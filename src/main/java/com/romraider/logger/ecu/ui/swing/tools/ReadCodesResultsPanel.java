@@ -135,7 +135,7 @@ public final class ReadCodesResultsPanel extends JPanel {
         final ReadCodesResultsPanel resultsPane =
                 new ReadCodesResultsPanel(dtcSet);
         mainPanel.add(resultsPane);
-        if (dmCurrentCodes != null || dmMemCodes != null) {
+        if ((dmCurrentCodes != null && dmCurrentCodes.size() > 0) || (dmMemCodes != null && dmMemCodes.size() > 0)) {
             JSeparator sep = new JSeparator(JSeparator.HORIZONTAL);
             mainPanel.add(sep);
             JLabel dmLabel = new JLabel("DimeMod errors:", SwingConstants.CENTER);

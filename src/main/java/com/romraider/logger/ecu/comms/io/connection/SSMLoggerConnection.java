@@ -98,15 +98,24 @@ public final class SSMLoggerConnection implements LoggerConnection {
             return;
         }
         DmInit dmInit = callback.getDmInit();
+        byte resetState;
         if (dmInit == null) {
-            byte[] request = protocol.constructWriteAddressRequest(module, new byte[]{0x00, 0x00, 0x60}, (byte) 0xDE);
-            if (LOGGER.isDebugEnabled())
-                LOGGER.debug(module + " Init DM Request  ---> " + asHex(request));
+            byte[] request = protocol.getProtocol().constructReadAddressRequest(module, new byte[][]{new byte[]{0x00, 0x00, 0x60}});
             byte[] response = manager.send(request);
             byte[] processedResponse = protocol.preprocessResponse(request, response, new PollingStateImpl());
+            byte responseType = processedResponse[4];
+            if (responseType != SSMProtocol.READ_ADDRESS_RESPONSE) {
+                return;
+            }
+            resetState = processedResponse[5];
+            request = protocol.constructWriteAddressRequest(module, new byte[]{0x00, 0x00, 0x60}, (byte) 0xDE);
+            if (LOGGER.isDebugEnabled())
+                LOGGER.debug(module + " Init DM Request  ---> " + asHex(request));
+            response = manager.send(request);
+            processedResponse = protocol.preprocessResponse(request, response, new PollingStateImpl());
             if (LOGGER.isDebugEnabled())
                 LOGGER.debug(module + " Init DM Response <--- " + asHex(processedResponse));
-            byte responseType = processedResponse[4];
+            responseType = processedResponse[4];
             if (responseType != SSMProtocol.WRITE_ADDRESS_RESPONSE) {
                 // error
                 return;
@@ -203,6 +212,10 @@ public final class SSMLoggerConnection implements LoggerConnection {
                 }
 
                 dmInit = new DmInit(dmInitBytes);
+            } else {
+                // restoring Reset state
+                request = protocol.constructWriteAddressRequest(module, new byte[]{0x00, 0x00, 0x60}, resetState);
+                manager.send(request);
             }
         }
 

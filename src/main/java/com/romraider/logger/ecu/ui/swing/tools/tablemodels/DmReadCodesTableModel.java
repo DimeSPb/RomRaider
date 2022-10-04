@@ -54,7 +54,7 @@ public final class DmReadCodesTableModel extends DefaultTableModel {
     }
     
     public final Object getValueAt(int row, int column) {
-        if (dtcAllList != null) {
+        if (dtcAllList != null && dtcAllList.size() > 0) {
             final String result = dtcAllList.get(row);
             switch (column) {
                 case 0:
@@ -77,7 +77,11 @@ public final class DmReadCodesTableModel extends DefaultTableModel {
     }
     
     public final Class<? extends Object> getColumnClass(int column) {
-        return getValueAt(0, column).getClass();
+        if (dtcAllList != null && dtcAllList.size() > 0) {
+            return getValueAt(0, column).getClass();
+        } else {
+            return null;
+        }
     }
 
     public final boolean isCellEditable(int row, int column) {

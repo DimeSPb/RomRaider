@@ -273,7 +273,8 @@ public class DmInit {
         boolean isFailsafeExternalTriggerEnabled = (activeFeatures & 0x80) != 0;
 
         params.clear();
-        params.add(getUInt32Parameter("DM900", "DimeMod: Errors present (current)", "Errors present if not zero", currentErrorCodesAddress, "n", "(x!=0)"));
+        params.add(getUInt8Parameter("DM666", "DimeMod: timer test", "DM666", currentErrorCodesAddress + 8 , "n", "x/16"));
+        params.add(getUInt32Parameter("DM900", "DimeMod: Errors present (current)", "Errors present if not zero", currentErrorCodesAddress, "n", "x!=0"));
         params.add(getUInt32Parameter("DM901", "DimeMod: Errors present (memorized)", "Errors present if not zero", memorizedErrorCodesAddress, "n", "x!=0"));
 
         if (isAfrEnabled) {
