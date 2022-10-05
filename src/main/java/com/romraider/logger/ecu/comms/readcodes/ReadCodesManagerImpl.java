@@ -154,9 +154,13 @@ public final class ReadCodesManagerImpl implements ReadCodesManager {
                     return -1;
                 }
                 else {
-                    Set<String> dmCodesStr = logger.getDmInit().decodeDmCurrentErrors();
-                    Set<String> dmMemCodesStr = logger.getDmInit().decodeDmMemorizedErrors();
-                    ReadCodesResultsPanel.displayResultsPane(logger, dtcSet, dmCodesStr, dmMemCodesStr);
+                    if (logger.getDmInit() != null) {
+                        Set<String> dmCodesStr = logger.getDmInit().decodeDmCurrentErrors();
+                        Set<String> dmMemCodesStr = logger.getDmInit().decodeDmMemorizedErrors();
+                        ReadCodesResultsPanel.displayResultsPane(logger, dtcSet, dmCodesStr, dmMemCodesStr);
+                    } else {
+                        ReadCodesResultsPanel.displayResultsPane(logger, dtcSet);
+                    }
                 }
                 return 1;
             }

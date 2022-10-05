@@ -28,9 +28,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import com.romraider.io.protocol.Protocol;
 import com.romraider.io.protocol.ssm.iso9141.SSMProtocol;
-import com.romraider.logger.ecu.comms.query.EcuQueryImpl;
 import com.romraider.logger.ecu.comms.query.dimemod.DmInit;
 import com.romraider.logger.ecu.comms.query.dimemod.DmInitCallback;
 import com.romraider.logger.ecu.definition.*;
@@ -221,6 +219,7 @@ public final class SSMLoggerConnection implements LoggerConnection {
 
         // read runtime params
         if (dmInit != null) {
+            int aiAddr = dmInit.getActiveInputsAddress();
             int afAddr = dmInit.getActiveFeaturesAddress();
             int cerrAddr = dmInit.getCurrentErrorCodesAddress();
             int merrAddr = dmInit.getMemorizedErrorCodesAddress();
@@ -228,6 +227,10 @@ public final class SSMLoggerConnection implements LoggerConnection {
             byte[] request = protocol.getProtocol().constructReadAddressRequest(module, new byte[][]{
                     getThreeByteAddr(afAddr),
                     getThreeByteAddr(afAddr + 1),
+                    getThreeByteAddr(afAddr + 2),
+                    getThreeByteAddr(afAddr + 3),
+                    getThreeByteAddr(aiAddr),
+                    getThreeByteAddr(aiAddr + 1),
                     getThreeByteAddr(cerrAddr),
                     getThreeByteAddr(cerrAddr + 1),
                     getThreeByteAddr(cerrAddr + 2),
@@ -248,9 +251,10 @@ public final class SSMLoggerConnection implements LoggerConnection {
                 // error
                 return;
             }
-            dmInit.updateRuntimeData(getShortFromResponse(processedResponse, 5),
-                    getIntFromResponse(processedResponse, 7),
-                    getIntFromResponse(processedResponse, 11));
+            dmInit.updateRuntimeData(getIntFromResponse(processedResponse, 5),
+                    getShortFromResponse(processedResponse, 9),
+                    getIntFromResponse(processedResponse, 11),
+                    getIntFromResponse(processedResponse, 15));
         }
         callback.callback(dmInit);
     }

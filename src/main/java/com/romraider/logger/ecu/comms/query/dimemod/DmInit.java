@@ -78,7 +78,8 @@ public class DmInit {
     private int pwmControlTargetDutyAddress;
     private int currentErrorCodesAddress;
     private int memorizedErrorCodesAddress;
-    private int activeFeaturesAddress;
+    private final int activeFeaturesAddress;
+    private int activeInputsAddress;
     private int afrAddress;
     private int egtAddress;
     private int fuelPressAddress;
@@ -96,6 +97,7 @@ public class DmInit {
     private int runtimeCurrentErrors;
     private int runtimeMemErrors;
     private int runtimeActiveFeatures;
+    private int runtimeActiveInputs;
     private List<EcuParameter> params = new ArrayList<>();
 
     public DmInit(byte[] dmInitBytes) {
@@ -134,6 +136,7 @@ public class DmInit {
         currentErrorCodesAddress = buf.getInt();
         memorizedErrorCodesAddress = buf.getInt();
         activeFeaturesAddress = buf.getInt();
+        activeInputsAddress = buf.getInt();
         afrAddress = buf.getInt();
         egtAddress = buf.getInt();
         fuelPressAddress = buf.getInt();
@@ -213,6 +216,10 @@ public class DmInit {
             alphaNBaseMassAirflowAddress = buf.getInt();
             alphaNFinalMassAirflowAddress = buf.getInt();
             sensorMassAirflowAddress = buf.getInt();
+            int engineLoadSmoothingAAddress = buf.getInt();
+            int engineLoadSmoothingBAddress = buf.getInt();
+            int engineLoadSmoothingCAddress = buf.getInt();
+            int engineLoadSmoothingDAddress = buf.getInt();
         }
 
         if (isVinLockEnabled) {
@@ -258,22 +265,38 @@ public class DmInit {
         }
     }
 
-    public void updateRuntimeData(int activeFeatures, int currentErrors, int memErrors) {
+    public void updateRuntimeData(int activeFeatures, int activeInputs, int currentErrors, int memErrors) {
         this.runtimeActiveFeatures = activeFeatures;
+        this.runtimeActiveInputs = activeInputs;
         this.runtimeCurrentErrors = currentErrors;
         this.runtimeMemErrors = memErrors;
 
-        boolean isAfrEnabled = (activeFeatures & 0x01) != 0;
-        boolean isEgtEnabled = (activeFeatures & 0x02) != 0;
-        boolean isFuelPressureEnabled = (activeFeatures & 0x04) != 0;
-        boolean isBackPressureEnabled = (activeFeatures & 0x08) != 0;
-        boolean isFlexFuelEnabled = (activeFeatures & 0x10) != 0;
-        boolean isFfsExternalTriggerEnabled = (activeFeatures & 0x20) != 0;
-        boolean isMapSwitchExternalTriggerEnabled = (activeFeatures & 0x40) != 0;
-        boolean isFailsafeExternalTriggerEnabled = (activeFeatures & 0x80) != 0;
+        boolean isAfrEnabled = (activeInputs & 0x01) != 0;
+        boolean isEgtEnabled = (activeInputs & 0x02) != 0;
+        boolean isFuelPressureEnabled = (activeInputs & 0x04) != 0;
+        boolean isBackPressureEnabled = (activeInputs & 0x08) != 0;
+        boolean isFlexFuelEnabled = (activeInputs & 0x10) != 0;
+        boolean isFfsExternalTriggerEnabled = (activeInputs & 0x20) != 0;
+        boolean isMapSwitchExternalTriggerEnabled = (activeInputs & 0x40) != 0;
+        boolean isFailsafeExternalTriggerEnabled = (activeInputs & 0x80) != 0;
+
+        boolean isRamTuneEnabled = (runtimeActiveFeatures & 0x80000000) != 0;
+        boolean isCruiseButtonImmediateHacksEnabled = (runtimeActiveFeatures & 0x40000000) != 0;
+        boolean isCorrectionsByGearsEnabled = (runtimeActiveFeatures & 0x20000000) != 0;
+        boolean isCelFlashEnabled = (runtimeActiveFeatures & 0x10000000) != 0;
+        boolean isKnockLightEnabled = (runtimeActiveFeatures & 0x08000000) != 0;
+        boolean isKsByCylsEnabled = (runtimeActiveFeatures & 0x04000000) != 0;
+        boolean isMapSwitchEnabled = (runtimeActiveFeatures & 0x02000000) != 0;
+        boolean isSparkCutEnabled = (runtimeActiveFeatures & 0x01000000) != 0;
+        boolean isSpeedDensityEnabled = (runtimeActiveFeatures & 0x800000) != 0;
+        boolean isAlsEnabled = (runtimeActiveFeatures & 0x400000) != 0;
+        boolean isCanSenderEnabled = (runtimeActiveFeatures & 0x200000) != 0;
+        boolean isVinLockEnabled = (runtimeActiveFeatures & 0x100000) != 0;
+        boolean isPwmControlEnabled = (runtimeActiveFeatures & 0x080000) != 0;
+        boolean isValetModeEnabled = (runtimeActiveFeatures & 0x040000) != 0;
 
         params.clear();
-        params.add(getUInt8Parameter("DM666", "DimeMod: timer test", "DM666", currentErrorCodesAddress + 8 , "n", "x/16"));
+        params.add(getUInt8Parameter("DM666", "DimeMod: timer test", "DM666", currentErrorCodesAddress + 12 , "n", "x/16"));
         params.add(getUInt32Parameter("DM900", "DimeMod: Errors present (current)", "Errors present if not zero", currentErrorCodesAddress, "n", "x!=0"));
         params.add(getUInt32Parameter("DM901", "DimeMod: Errors present (memorized)", "Errors present if not zero", memorizedErrorCodesAddress, "n", "x!=0"));
 
@@ -443,20 +466,24 @@ public class DmInit {
         return memorizedErrorCodesAddress;
     }
 
-    public int getActiveFeaturesAddress() {
-        return activeFeaturesAddress;
+    public int getActiveInputsAddress() {
+        return activeInputsAddress;
     }
 
     public int getRuntimeCurrentErrors() {
         return runtimeCurrentErrors;
     }
 
+    public int getRuntimeActiveInputs() {
+        return runtimeActiveInputs;
+    }
+
     public int getRuntimeMemErrors() {
         return runtimeMemErrors;
     }
 
-    public int getRuntimeActiveFeatures() {
-        return runtimeActiveFeatures;
+    public int getActiveFeaturesAddress() {
+        return activeFeaturesAddress;
     }
 
     public Set<String> decodeDmCurrentErrors() {
@@ -537,5 +564,4 @@ public class DmInit {
 
         return result;
     }
-
 }
