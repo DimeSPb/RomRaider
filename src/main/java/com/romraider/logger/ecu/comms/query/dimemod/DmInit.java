@@ -45,6 +45,7 @@ public class DmInit {
     private final int ffsTriggerVoltageAddress;
     private final int extFailsafeVoltageAddress;
     private final int extMapSwitchVoltageAddress;
+    private int sdAtmPressAddress;
     private int msFailsafeStateAddress;
     private int msFailsafeMemorizedStateAddress;
     private int ramTuneSignatureAddress;
@@ -105,164 +106,169 @@ public class DmInit {
         ByteBuffer buf = ByteBuffer.wrap(dmInitBytes);
         buf.position(0);
         majorVer = buf.get() & 0xFF;
-        minorVer = buf.get() & 0xFF;
-        buildNum = buf.getShort() & 0xFFFF;
-        int ramSize = buf.getInt();
-        byte featuresConfig0 = buf.get();
-        byte featuresConfig1 = buf.get();
-        byte featuresConfig2 = buf.get();
-        byte featuresConfig3 = buf.get();
+        //if (majorVer >= 2) {
+            minorVer = buf.get() & 0xFF;
+            buildNum = buf.getShort() & 0xFFFF;
+            int ramSize = buf.getInt();
+            byte featuresConfig0 = buf.get();
+            byte featuresConfig1 = buf.get();
+            byte featuresConfig2 = buf.get();
+            byte featuresConfig3 = buf.get();
 
-        isRamTuneEnabled = (featuresConfig0 & 0x80) != 0;
-        isCruiseButtonImmediateHacksEnabled = (featuresConfig0 & 0x40) != 0;
-        isCorrectionsByGearsEnabled = (featuresConfig0 & 0x20) != 0;
-        isCelFlashEnabled = (featuresConfig0 & 0x10) != 0;
-        isKnockLightEnabled = (featuresConfig0 & 0x08) != 0;
-        isKsByCylsEnabled = (featuresConfig0 & 0x04) != 0;
-        isMapSwitchEnabled = (featuresConfig0 & 0x02) != 0;
-        isSparkCutEnabled = (featuresConfig0 & 0x01) != 0;
-        isSpeedDensityEnabled = (featuresConfig1 & 0x80) != 0;
-        isAlsEnabled = (featuresConfig1 & 0x40) != 0;
-        isCanSenderEnabled = (featuresConfig1 & 0x20) != 0;
-        isVinLockEnabled = (featuresConfig1 & 0x10) != 0;
-        isPwmControlEnabled = (featuresConfig1 & 0x08) != 0;
-        isValetModeEnabled = (featuresConfig1 & 0x04) != 0;
+            isRamTuneEnabled = (featuresConfig0 & 0x80) != 0;
+            isCruiseButtonImmediateHacksEnabled = (featuresConfig0 & 0x40) != 0;
+            isCorrectionsByGearsEnabled = (featuresConfig0 & 0x20) != 0;
+            isCelFlashEnabled = (featuresConfig0 & 0x10) != 0;
+            isKnockLightEnabled = (featuresConfig0 & 0x08) != 0;
+            isKsByCylsEnabled = (featuresConfig0 & 0x04) != 0;
+            isMapSwitchEnabled = (featuresConfig0 & 0x02) != 0;
+            isSparkCutEnabled = (featuresConfig0 & 0x01) != 0;
+            isSpeedDensityEnabled = (featuresConfig1 & 0x80) != 0;
+            isAlsEnabled = (featuresConfig1 & 0x40) != 0;
+            isCanSenderEnabled = (featuresConfig1 & 0x20) != 0;
+            isVinLockEnabled = (featuresConfig1 & 0x10) != 0;
+            isPwmControlEnabled = (featuresConfig1 & 0x08) != 0;
+            isValetModeEnabled = (featuresConfig1 & 0x04) != 0;
 
-        // INPUTS_CONFIG
-        int signature = buf.getInt();
-        if (signature != 0xDEAD0001) {
-            throw new IllegalStateException("DimeMod params reading failure at INPUTS_CONFIG");
-        }
-        currentErrorCodesAddress = buf.getInt();
-        memorizedErrorCodesAddress = buf.getInt();
-        activeFeaturesAddress = buf.getInt();
-        activeInputsAddress = buf.getInt();
-        afrAddress = buf.getInt();
-        egtAddress = buf.getInt();
-        fuelPressAddress = buf.getInt();
-        fuelDiffPressAddress = buf.getInt();
-        backPressAddress = buf.getInt();
-        ethanolContentAddress = buf.getInt();
-        ffsTriggerStateAddress = buf.getInt();
-        extFailsafeStateAddress = buf.getInt();
-
-        afrVoltageAddress = buf.getInt();
-        egtVoltageAddress = buf.getInt();
-        fuelPressVoltageAddress = buf.getInt();
-        backPressVoltageAddress = buf.getInt();
-        ethanolContentVoltageAddress = buf.getInt();
-        ffsTriggerVoltageAddress = buf.getInt();
-        extFailsafeVoltageAddress = buf.getInt();
-        extMapSwitchVoltageAddress = buf.getInt();
-
-        if (isRamTuneEnabled) {
-            signature = buf.getInt();
-            if (signature != 0xDEAD0020) {
-                throw new IllegalStateException("DimeMod params reading failure at RAM_TUNE");
+            // INPUTS_CONFIG
+            int signature = buf.getInt();
+            if (signature != 0xDEAD0001) {
+                throw new IllegalStateException("DimeMod params reading failure at INPUTS_CONFIG");
             }
-            ramTuneSignatureAddress = buf.getInt();
-            ramTuneLutSize = buf.getInt();
-        }
+            currentErrorCodesAddress = buf.getInt();
+            memorizedErrorCodesAddress = buf.getInt();
+            activeFeaturesAddress = buf.getInt();
+            activeInputsAddress = buf.getInt();
+            afrAddress = buf.getInt();
+            egtAddress = buf.getInt();
+            fuelPressAddress = buf.getInt();
+            fuelDiffPressAddress = buf.getInt();
+            backPressAddress = buf.getInt();
+            ethanolContentAddress = buf.getInt();
+            ffsTriggerStateAddress = buf.getInt();
+            extFailsafeStateAddress = buf.getInt();
 
-        if (isCelFlashEnabled) {
-            signature = buf.getInt();
-            if (signature != 0xDEAD0004) {
-                throw new IllegalStateException("DimeMod params reading failure at CEL_FLASH");
-            }
-            celOverrideStateAddress = buf.getInt();
-        }
+            afrVoltageAddress = buf.getInt();
+            egtVoltageAddress = buf.getInt();
+            fuelPressVoltageAddress = buf.getInt();
+            backPressVoltageAddress = buf.getInt();
+            ethanolContentVoltageAddress = buf.getInt();
+            ffsTriggerVoltageAddress = buf.getInt();
+            extFailsafeVoltageAddress = buf.getInt();
+            extMapSwitchVoltageAddress = buf.getInt();
 
-        if (isKsByCylsEnabled) {
-            signature = buf.getInt();
-            if (signature != 0xDEAD0006) {
-                throw new IllegalStateException("DimeMod params reading failure at KS_BY_CYLS");
+            if (isRamTuneEnabled) {
+                signature = buf.getInt();
+                if (signature != 0xDEAD0020) {
+                    throw new IllegalStateException("DimeMod params reading failure at RAM_TUNE");
+                }
+                ramTuneSignatureAddress = buf.getInt();
+                ramTuneLutSize = buf.getInt();
             }
-            knockSumCyl1Address = buf.getInt();
-            knockSumCyl3Address = knockSumCyl1Address + 1;
-            knockSumCyl2Address = knockSumCyl1Address + 2;
-            knockSumCyl4Address = knockSumCyl1Address + 3;
-        }
 
-        if (isMapSwitchEnabled) {
-            signature = buf.getInt();
-            if (signature != 0xDEAD0007) {
-                throw new IllegalStateException("DimeMod params reading failure at MAP_SWITCH");
+            if (isCelFlashEnabled) {
+                signature = buf.getInt();
+                if (signature != 0xDEAD0004) {
+                    throw new IllegalStateException("DimeMod params reading failure at CEL_FLASH");
+                }
+                celOverrideStateAddress = buf.getInt();
             }
-            msNumberOfSets = buf.getInt();
-            msCurrentSetNumberAddress = buf.getInt();
-            msFailsafeStateAddress = buf.getInt();
-            msFailsafeMemorizedStateAddress = buf.getInt();
-            flexFuelBoostSetBlendAddress = buf.getInt();
-            flexFuelFuelingSetBlendAddress = buf.getInt();
-            flexFuelIgnitionSetBlendAddress = buf.getInt();
-            flexFuelOtherSetBlendAddress = buf.getInt();
-            flexFuelInjFlowValueAddress = buf.getInt();
-        }
 
-        if (isSpeedDensityEnabled) {
-            signature = buf.getInt();
-            if (signature != 0xDEAD0009) {
-                throw new IllegalStateException("DimeMod params reading failure at SPEED_DENSITY");
+            if (isKsByCylsEnabled) {
+                signature = buf.getInt();
+                if (signature != 0xDEAD0006) {
+                    throw new IllegalStateException("DimeMod params reading failure at KS_BY_CYLS");
+                }
+                knockSumCyl1Address = buf.getInt();
+                knockSumCyl3Address = knockSumCyl1Address + 1;
+                knockSumCyl2Address = knockSumCyl1Address + 2;
+                knockSumCyl4Address = knockSumCyl1Address + 3;
             }
-            sdPortTempAddress = buf.getInt();
-            sdIatCompensationAddress = buf.getInt();
-            sdTipInCompensationAddress = buf.getInt();
-            sdAtmPressCompensationAddress = buf.getInt();
-            sdBlendingRatioAddress = buf.getInt();
-            sdBaseVeAddress = buf.getInt();
-            sdFinalVeAddress = buf.getInt();
-            alphaNIatCompensationAddress = buf.getInt();
-            alphaNAtmPressCompensationAddress = buf.getInt();
-            alphaNBaseMassAirflowAddress = buf.getInt();
-            alphaNFinalMassAirflowAddress = buf.getInt();
-            sensorMassAirflowAddress = buf.getInt();
-            int engineLoadSmoothingAAddress = buf.getInt();
-            int engineLoadSmoothingBAddress = buf.getInt();
-            int engineLoadSmoothingCAddress = buf.getInt();
-            int engineLoadSmoothingDAddress = buf.getInt();
-        }
 
-        if (isVinLockEnabled) {
-            signature = buf.getInt();
-            if (signature != 0xDEAD000C) {
-                throw new IllegalStateException("DimeMod params reading failure at VIN_LOCK");
+            if (isMapSwitchEnabled) {
+                signature = buf.getInt();
+                if (signature != 0xDEAD0007) {
+                    throw new IllegalStateException("DimeMod params reading failure at MAP_SWITCH");
+                }
+                msNumberOfSets = buf.getInt();
+                msCurrentSetNumberAddress = buf.getInt();
+                msFailsafeStateAddress = buf.getInt();
+                msFailsafeMemorizedStateAddress = buf.getInt();
+                flexFuelBoostSetBlendAddress = buf.getInt();
+                flexFuelFuelingSetBlendAddress = buf.getInt();
+                flexFuelIgnitionSetBlendAddress = buf.getInt();
+                flexFuelOtherSetBlendAddress = buf.getInt();
+                flexFuelInjFlowValueAddress = buf.getInt();
             }
-            buf.getInt();
-            buf.getInt();
-            buf.getInt();
-            buf.getInt();
-            buf.getInt();
-            buf.getInt();
-            buf.getInt();
-            buf.getInt();
-            buf.getInt();
-            buf.getInt();
-            buf.getInt();
-        }
 
-        if (isPwmControlEnabled) {
-            signature = buf.getInt();
-            if (signature != 0xDEAD000D) {
-                throw new IllegalStateException("DimeMod params reading failure at PWM_CONTROL");
+            if (isSpeedDensityEnabled) {
+                signature = buf.getInt();
+                if (signature != 0xDEAD0009) {
+                    throw new IllegalStateException("DimeMod params reading failure at SPEED_DENSITY");
+                }
+                sdPortTempAddress = buf.getInt();
+                sdIatCompensationAddress = buf.getInt();
+                sdTipInCompensationAddress = buf.getInt();
+                sdAtmPressCompensationAddress = buf.getInt();
+                sdBlendingRatioAddress = buf.getInt();
+                sdBaseVeAddress = buf.getInt();
+                sdFinalVeAddress = buf.getInt();
+                alphaNIatCompensationAddress = buf.getInt();
+                alphaNAtmPressCompensationAddress = buf.getInt();
+                alphaNBaseMassAirflowAddress = buf.getInt();
+                alphaNFinalMassAirflowAddress = buf.getInt();
+                sensorMassAirflowAddress = buf.getInt();
+                if (buildNum > 0) {
+                    sdAtmPressAddress = buf.getInt();
+                }
+                int engineLoadSmoothingAAddress = buf.getInt();
+                int engineLoadSmoothingBAddress = buf.getInt();
+                int engineLoadSmoothingCAddress = buf.getInt();
+                int engineLoadSmoothingDAddress = buf.getInt();
             }
-            pwmControlTargetDutyAddress = buf.getInt();
-        }
 
-        if (isAlsEnabled) {
-            signature = buf.getInt();
-            if (signature != 0xDEAD000A) {
-                throw new IllegalStateException("DimeMod params reading failure at ALS");
+            if (isVinLockEnabled) {
+                signature = buf.getInt();
+                if (signature != 0xDEAD000C) {
+                    throw new IllegalStateException("DimeMod params reading failure at VIN_LOCK");
+                }
+                buf.getInt();
+                buf.getInt();
+                buf.getInt();
+                buf.getInt();
+                buf.getInt();
+                buf.getInt();
+                buf.getInt();
+                buf.getInt();
+                buf.getInt();
+                buf.getInt();
+                buf.getInt();
             }
-            buf.getInt();
-        }
 
-        if (isValetModeEnabled) {
-            signature = buf.getInt();
-            if (signature != 0xDEAD000E) {
-                throw new IllegalStateException("DimeMod params reading failure at VALET_MODE");
+            if (isPwmControlEnabled) {
+                signature = buf.getInt();
+                if (signature != 0xDEAD000D) {
+                    throw new IllegalStateException("DimeMod params reading failure at PWM_CONTROL");
+                }
+                pwmControlTargetDutyAddress = buf.getInt();
             }
-            buf.getInt();
-        }
+
+            if (isAlsEnabled) {
+                signature = buf.getInt();
+                if (signature != 0xDEAD000A) {
+                    throw new IllegalStateException("DimeMod params reading failure at ALS");
+                }
+                buf.getInt();
+            }
+
+            if (isValetModeEnabled) {
+                signature = buf.getInt();
+                if (signature != 0xDEAD000E) {
+                    throw new IllegalStateException("DimeMod params reading failure at VALET_MODE");
+                }
+                buf.getInt();
+            }
+        //}
     }
 
     public void updateRuntimeData(int activeFeatures, int activeInputs, int currentErrors, int memErrors) {
@@ -301,7 +307,7 @@ public class DmInit {
         params.add(getUInt32Parameter("DM901", "DimeMod: Errors present (memorized)", "Errors present if not zero", memorizedErrorCodesAddress, "n", "x!=0"));
 
         if (isAfrEnabled) {
-            params.add(getFloatParameter("DM902", "DimeMod: AFR", "Air-to-Fuel ratio", afrAddress, "lambda", "x", 0.75f, 1.5f, 0.05f));
+            params.add(getFloatParameter("DM902", "DimeMod: AFR", "Air-to-Fuel ratio", afrAddress, "AFR", "x", 8f, 20f, 2f));
             params.add(getFloatParameter("DM903", "DimeMod: AFR Voltage", "Voltage", afrVoltageAddress, "v", "x", 0f, 5f, 0.5f));
         }
         if (isEgtEnabled) {
@@ -370,6 +376,9 @@ public class DmInit {
             params.add(getFloatParameter("DM029", "DimeMod: AlphaN Mass Airflow Base", "Base AlphaN Mass Airflow (no compensations applied)", alphaNBaseMassAirflowAddress, "g/s", "x", 0, 300, 50));
             params.add(getFloatParameter("DM02A", "DimeMod: AlphaN Mass Airflow Final", "Final AlphaN Mass Airflow (all compensations applied)", alphaNFinalMassAirflowAddress, "g/s", "x", 0, 300, 50));
             params.add(getFloatParameter("DM02B", "DimeMod: Mass Airflow (sensor-based))", "Mass Airflow calculated directly from MAF sensor", sensorMassAirflowAddress, "g/s", "x", 0, 500, 50));
+            if (buildNum > 0) {
+                params.add(getFloatMfPressureParameter("DM02C", "DimeMod: SD Atmospheric Pressure", "Atmospheric Pressure used in SD calculations", sdAtmPressAddress));
+            }
         }
     }
 
@@ -429,6 +438,19 @@ public class DmInit {
                 }
         );
     }
+
+    private EcuParameterImpl getFloatMfPressureParameter(String id, String name, String description, int address) {
+        return new EcuParameterImpl(id, name,
+                description,
+                new EcuAddressImpl(Integer.toHexString(address & 0xFFFFFF), 4, -1),
+                null, null, null,
+                new EcuDataConvertor[]{
+                        new EcuParameterConvertorImpl("bar", "x*.001333333333", "0.000", -1, "float", Settings.Endian.BIG, new HashMap<>(), new GaugeMinMax(0, 10, 1)),
+                        new EcuParameterConvertorImpl("psi", "x*.0193384", "0.0", -1, "float", Settings.Endian.BIG, new HashMap<>(), new GaugeMinMax(0, 100, 10))
+                }
+        );
+    }
+
 
     private EcuParameterImpl getFloatParameter(String id, String name, String description, int address, String units, String conversion, float min, float max, float step) {
         return new EcuParameterImpl(id, name,
