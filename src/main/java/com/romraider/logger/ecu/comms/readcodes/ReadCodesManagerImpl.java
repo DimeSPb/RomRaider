@@ -131,7 +131,7 @@ public final class ReadCodesManagerImpl implements ReadCodesManager {
                 if (logger.getDmInit() != null) {
                     connection.dmInit(new DmInitCallback() {
                         @Override
-                        public void callback(DmInit dmInit) {
+                        public void callback(DmInit dmInit, boolean forceUpdate) {
                             dmCodes[0] = dmInit.getRuntimeCurrentErrors();
                             dmMemCodes[0] = dmInit.getRuntimeMemErrors();
                         }

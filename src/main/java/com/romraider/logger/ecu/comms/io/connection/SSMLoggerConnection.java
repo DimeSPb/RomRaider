@@ -217,6 +217,7 @@ public final class SSMLoggerConnection implements LoggerConnection {
             }
         }
 
+        boolean forceUpdate = false;
         // read runtime params
         if (dmInit != null) {
             int aiAddr = dmInit.getActiveInputsAddress();
@@ -251,12 +252,12 @@ public final class SSMLoggerConnection implements LoggerConnection {
                 // error
                 return;
             }
-            dmInit.updateRuntimeData(getIntFromResponse(processedResponse, 5),
+            forceUpdate = dmInit.updateRuntimeData(getIntFromResponse(processedResponse, 5),
                     getShortFromResponse(processedResponse, 9),
                     getIntFromResponse(processedResponse, 11),
                     getIntFromResponse(processedResponse, 15));
         }
-        callback.callback(dmInit);
+        callback.callback(dmInit, forceUpdate);
     }
 
     private static int getShortFromResponse(byte[] processedResponse, int offset) {

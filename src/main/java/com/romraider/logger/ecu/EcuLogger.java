@@ -440,8 +440,8 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
 
         DmInitCallback dmInitCallback = new DmInitCallback() {
             @Override
-            public void callback(DmInit dmInit) {
-                if (dmInit != EcuLogger.this.dmInit) {
+            public void callback(DmInit dmInit, boolean forceUpdate) {
+                if (dmInit != EcuLogger.this.dmInit || (dmInit != null && forceUpdate)) {
                     invokeLater(() -> {
                         EcuLogger.this.dmInit = dmInit;
                         dmLabel.setText("DimeMod v" + dmInit.getDimeModVersion());

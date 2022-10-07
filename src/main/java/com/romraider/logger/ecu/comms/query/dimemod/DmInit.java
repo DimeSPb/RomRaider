@@ -45,6 +45,10 @@ public class DmInit {
     private final int ffsTriggerVoltageAddress;
     private final int extFailsafeVoltageAddress;
     private final int extMapSwitchVoltageAddress;
+    private int diffPressureCompensationAddress;
+    private int targetStoichAddress;
+    private int stoichCompensationAddress;
+    private int convertedAfrAddress;
     private int sdAtmPressAddress;
     private int msFailsafeStateAddress;
     private int msFailsafeMemorizedStateAddress;
@@ -199,6 +203,12 @@ public class DmInit {
                 flexFuelIgnitionSetBlendAddress = buf.getInt();
                 flexFuelOtherSetBlendAddress = buf.getInt();
                 flexFuelInjFlowValueAddress = buf.getInt();
+                if (buildNum > 1) {
+                    diffPressureCompensationAddress = buf.getInt();
+                    targetStoichAddress = buf.getInt();
+                    stoichCompensationAddress = buf.getInt();
+                    convertedAfrAddress = buf.getInt();
+                }
             }
 
             if (isSpeedDensityEnabled) {
@@ -271,7 +281,11 @@ public class DmInit {
         //}
     }
 
-    public void updateRuntimeData(int activeFeatures, int activeInputs, int currentErrors, int memErrors) {
+    public boolean updateRuntimeData(int activeFeatures, int activeInputs, int currentErrors, int memErrors) {
+        boolean changed = false;
+        if (activeFeatures != this.runtimeActiveFeatures || activeInputs != this.runtimeActiveInputs) {
+            changed = true;
+        }
         this.runtimeActiveFeatures = activeFeatures;
         this.runtimeActiveInputs = activeInputs;
         this.runtimeCurrentErrors = currentErrors;
@@ -360,7 +374,17 @@ public class DmInit {
                 params.add(getFloatParameter("DM015", "DimeMod: Flex Fuel blend value (Ignition)", "Blend Value (Ignition)", flexFuelIgnitionSetBlendAddress, "set", 0, 4, 0.1f));
                 params.add(getFloatParameter("DM016", "DimeMod: Flex Fuel blend value (Other)", "Blend Value (Other)", flexFuelOtherSetBlendAddress, "set", 0, 4, 0.1f));
             }
-            params.add(getFloatParameter("DM017", "DimeMod: Injector Flow value", "Injector Flow Value", flexFuelInjFlowValueAddress, "cc/min", "2707090/x", 0, 4, 0.1f));
+        }
+        params.add(getFloatParameter("DM017", "DimeMod: Injector Flow value", "Injector Flow Value", flexFuelInjFlowValueAddress, "cc/min", "2707090/x", 0, 4, 0.1f));
+        if (buildNum > 1) {
+            if (isFuelPressureEnabled) {
+                params.add(getFloatParameter("DM018", "DimeMod: IPW Diff Pressure Compensation", "IPW compensation in %", diffPressureCompensationAddress, "%", "(x-1)*100", -100, 100, 10f));
+            }
+            params.add(getFloatParameter("DM01A", "DimeMod: Target Stoichiometric AFR", "Target Stoich AFR", targetStoichAddress, "AFR", "x", 8, 18, 1f));
+            params.add(getFloatParameter("DM019", "DimeMod: IPW Stoich Compensation", "IPW compensation in %", stoichCompensationAddress, "%", "(x-1)*100", -100, 100, 10f));
+            if (isAfrEnabled) {
+                params.add(getFloatParameter("DM01B", "DimeMod: AFR Stoich Converted", "AFR with stoich compensation applied", convertedAfrAddress, "AFR", "x", 8, 18, 10f));
+            }
         }
         if (isSpeedDensityEnabled) {
             params.add(getFloatTempParameter("DM020", "DimeMod: SD Port Temp", "Estimated intake port temp", sdPortTempAddress));
@@ -380,6 +404,7 @@ public class DmInit {
                 params.add(getFloatMfPressureParameter("DM02C", "DimeMod: SD Atmospheric Pressure", "Atmospheric Pressure used in SD calculations", sdAtmPressAddress));
             }
         }
+        return changed;
     }
 
     private EcuParameterImpl getUInt8Parameter(String id, String name, String description, int address, String units, String conversion) {

@@ -23,7 +23,7 @@ import com.romraider.logger.ecu.comms.query.EcuInit;
 
 public interface DmInitCallback {
 
-    void callback(DmInit dmInit);
+    void callback(DmInit dmInit, boolean forceUpdate);
 
     boolean needToInit();
 
