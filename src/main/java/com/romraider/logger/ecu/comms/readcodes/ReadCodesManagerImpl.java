@@ -148,7 +148,7 @@ public final class ReadCodesManagerImpl implements ReadCodesManager {
                     }, settings.getDestinationTarget());
                 }
 
-                if (dtcSet.isEmpty() && dmCodes[0] == null && dmMemCodes[0] == null) {
+                if (dtcSet.isEmpty() && (dmCodes[0] == null || dmCodes[0] == 0) && (dmMemCodes[0] == null || dmMemCodes[0] == 0)) {
                     LOGGER.info("Success reading " + target +
                             " DTC codes, none set");
                     return -1;

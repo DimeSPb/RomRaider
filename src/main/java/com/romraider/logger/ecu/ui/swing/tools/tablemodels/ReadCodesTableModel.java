@@ -47,7 +47,7 @@ public final class ReadCodesTableModel extends DefaultTableModel {
     }
     
     public final Object getValueAt(int row, int column) {
-        if (dtcSet != null) {
+        if (dtcSet != null && !dtcSet.isEmpty()) {
             final double result = dtcSet.get(row).getResponse();
             switch (column) {
                 case 0:
