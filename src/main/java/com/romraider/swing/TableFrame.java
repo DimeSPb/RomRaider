@@ -51,7 +51,7 @@ public class TableFrame extends JInternalFrame implements InternalFrameListener,
     private static final ResourceBundle rb = new ResourceUtil().getBundle(
             TableFrame.class.getName());
     private TableView tableView;
-    private TableMenuBar tableMenuBar = null;
+    private final TableMenuBar tableMenuBar;
 
     public TableFrame(String title, TableView tableView) {
         super(title, true, true);
@@ -63,7 +63,6 @@ public class TableFrame extends JInternalFrame implements InternalFrameListener,
 
         t.setTableFrame(this);
         add(tableView);
-        tableView.repaint();
 
         setBorder(createBevelBorder(0));
         if (System.getProperty("os.name").startsWith("Mac OS"))

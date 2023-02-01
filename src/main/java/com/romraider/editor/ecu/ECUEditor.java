@@ -379,92 +379,95 @@ public class ECUEditor extends AbstractFrame {
                     INFORMATION_MESSAGE);
         }
     }
-
+    
+    private void handleAlreadyOpenTable(TableFrame frame)
+    {
+        // table is already open.
+        if(1 == settings.getTableClickBehavior()) { // open/focus frame
+            // table is already open, so set focus on the frame.
+            boolean selected = true;
+            frame.toFront();
+            try {
+                frame.setSelected(true);
+            } catch (PropertyVetoException e) {
+                frame.toBack();
+                selected = false;
+            }
+            if(selected) {
+                frame.requestFocusInWindow();
+            }
+        } else {
+        	// default to open/close frame
+            // table is already open, so close the frame.
+            rightPanel.remove(frame);
+            frame.getTable().setTableFrame(null);
+            try {
+                frame.setClosed(true);
+            } catch (PropertyVetoException e) {
+                 // Do nothing.
+            }
+            frame.dispose();
+        }
+    }
+    
+    private void openClosedTable(TableTreeNode node)
+    {
+        Table t = node.getTable();
+        TableView v = null;
+        try {
+            if (t != null) {
+                if(t instanceof TableSwitch)
+                    v = new TableSwitchView((TableSwitch)t);
+                else if(t instanceof TableBitwiseSwitch)
+                    v = new TableBitwiseSwitchView((TableBitwiseSwitch)t);
+                else if(t instanceof Table1D)
+                    v = new Table1DView((Table1D)node.getTable(), Table1DType.NO_AXIS);
+                else if(t instanceof Table2D)
+                    v = new Table2DView((Table2D)t);
+                else if(t instanceof Table3D)
+                    v = new Table3DView((Table3D)t);
+                else
+                    return;
+                
+    	        v.populateTableVisual();
+            	v.drawTable();
+            	
+                Rom rom = RomTree.getRomNode(node);
+                TableFrame frame = new TableFrame(node.getTable().getName() + " | " + rom.getFileName(), v);
+    	        frame.pack();
+            	          	
+    	        rightPanel.add(frame);
+            }
+        }
+        catch(Exception e) {
+            final String msg = MessageFormat.format(
+                    rb.getString("POPULATEFAIL"), t.getName(),
+                    e.toString());
+            final Exception ex = new Exception(msg);
+            showMessageDialog(this,
+                    new DebugPanel(ex, settings.getSupportURL()),
+                    rb.getString("EXCEPTION"),
+                    ERROR_MESSAGE);
+        }
+    	
+    }
+    
     public void displayTable(TableTreeNode node) {
+
         TableFrame frame = node.getFrame();
 
-        try {
-            // check if frame has been added.
-            for(JInternalFrame curFrame : getRightPanel().getAllFrames()) {
-                if(curFrame.equals(frame)) {
-                    // table is already open.
-                    if(1 == settings.getTableClickBehavior()) { // open/focus frame
-                        // table is already open, so set focus on the frame.
-                        boolean selected = true;
-                        frame.toFront();
-                        try {
-                            frame.setSelected(true);
-                        } catch (PropertyVetoException e) {
-                            frame.toBack();
-                            selected = false;
-                        }
-                        if(selected) {
-                            frame.requestFocusInWindow();
-                        }
-                    } else { // default to open/close frame
-                        // table is already open, so close the frame.
-                        rightPanel.remove(frame);
-                        frame.setVisible(false);
-                        try {
-                            frame.setClosed(true);
-                        } catch (PropertyVetoException e) {
-                             // Do nothing.
-                        }
-                        frame.dispose();
-                    }
-                    frame.pack();
-                    rightPanel.repaint();
-                    return;
-                }
-            }
-
-
-        if(frame == null) {
-            TableView v;
-            Table t = node.getTable();
-            try {
-                if (t != null) {
-                    if(t instanceof TableSwitch)
-                        v = new TableSwitchView((TableSwitch)t);
-                    else if(t instanceof TableBitwiseSwitch)
-                        v = new TableBitwiseSwitchView((TableBitwiseSwitch)t);
-                    else if(t instanceof Table1D)
-                        v = new Table1DView((Table1D)node.getTable(), Table1DType.NO_AXIS);
-                    else if(t instanceof Table2D)
-                        v = new Table2DView((Table2D)t);
-                    else if(t instanceof Table3D)
-                        v = new Table3DView((Table3D)t);
-                    else
-                        return;
-
-                     Rom rom = RomTree.getRomNode(node);
-                     frame = new TableFrame(node.getTable().getName() + " | " + rom.getFileName(), v);
-                }
-            }
-            catch(Exception e) {
-                final String msg = MessageFormat.format(
-                        rb.getString("POPULATEFAIL"), t.getName(),
-                        e.toString());
-                final Exception ex = new Exception(msg);
-                showMessageDialog(this,
-                        new DebugPanel(ex, settings.getSupportURL()),
-                        rb.getString("EXCEPTION"),
-                        ERROR_MESSAGE);
-            }
+        // check if frame has been added.
+        if (frame != null)
+        {
+        	handleAlreadyOpenTable(frame);
         }
-        } catch (IllegalArgumentException ex) {
-            // Do nothing.
+        else
+        {
+        	openClosedTable(node);
         }
-
-        // frame not added.  Draw table and add the frame.
-        TableView v = frame.getTableView();
-
-        if(v != null)
-            v.drawTable();
-
-        rightPanel.add(frame);
+        
         rightPanel.repaint();
-        refreshTableCompareMenus();
+        refreshTableCompareMenus();        
     }
 
     public void removeDisplayTable(TableFrame frame) {
