@@ -141,7 +141,12 @@ public final class SSMLoggerConnection implements LoggerConnection {
                 if (responseType != SSMProtocol.READ_ADDRESS_RESPONSE) {
                     return;
                 }
-                startAddress |= (processedResponse[5] & 0xFF) << 16;
+                int highAddrByte = processedResponse[5] & 0xFF;
+                if (highAddrByte > 0x0F && highAddrByte != 0xFF) {
+                    // error reading address
+                    return;
+                }
+                startAddress |= highAddrByte << 16;
                 response = manager.send(request);
                 processedResponse = protocol.preprocessResponse(request, response, new PollingStateImpl());
                 responseType = processedResponse[4];

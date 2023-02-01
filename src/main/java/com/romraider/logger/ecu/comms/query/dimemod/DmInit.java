@@ -28,23 +28,26 @@ import java.util.*;
 
 public class DmInit {
     private final byte[] dmInitBytes;
-    private final boolean isRamTuneEnabled;
-    private final boolean isCruiseButtonImmediateHacksEnabled;
-    private final boolean isCorrectionsByGearsEnabled;
-    private final boolean isCelFlashEnabled;
-    private final boolean isKnockLightEnabled;
-    private final boolean isKsByCylsEnabled;
-    private final boolean isMapSwitchEnabled;
-    private final boolean isSparkCutEnabled;
-    private final boolean isSpeedDensityEnabled;
-    private final boolean isAlsEnabled;
-    private final boolean isCanSenderEnabled;
-    private final boolean isVinLockEnabled;
-    private final boolean isPwmControlEnabled;
-    private final boolean isValetModeEnabled;
-    private final int ffsTriggerVoltageAddress;
-    private final int extFailsafeVoltageAddress;
-    private final int extMapSwitchVoltageAddress;
+
+    private final boolean isDmInitReady;
+    private boolean isRamTuneEnabled;
+    private boolean isCruiseButtonImmediateHacksEnabled;
+    private boolean isCorrectionsByGearsEnabled;
+    private boolean isCelFlashEnabled;
+    private boolean isKnockLightEnabled;
+    private boolean isKsByCylsEnabled;
+    private boolean isMapSwitchEnabled;
+    private boolean isSparkCutEnabled;
+    private boolean isSpeedDensityEnabled;
+    private  boolean isAlsEnabled;
+    private boolean isCanSenderEnabled;
+    private boolean isVinLockEnabled;
+    private boolean isPwmControlEnabled;
+    private boolean isValetModeEnabled;
+    private int ffsTriggerVoltageAddress;
+    private int extFailsafeVoltageAddress;
+    private int extMapSwitchVoltageAddress;
+    private int valetCurrentCodeAddress;
     private int diffPressureCompensationAddress;
     private int targetStoichAddress;
     private int stoichCompensationAddress;
@@ -61,8 +64,8 @@ public class DmInit {
     private int knockSumCyl4Address;
     private int msNumberOfSets;
     private int msCurrentSetNumberAddress;
-    private final int ffsTriggerStateAddress;
-    private final int extFailsafeStateAddress;
+    private int ffsTriggerStateAddress;
+    private int extFailsafeStateAddress;
     private int flexFuelBoostSetBlendAddress;
     private int flexFuelFuelingSetBlendAddress;
     private int flexFuelIgnitionSetBlendAddress;
@@ -83,7 +86,7 @@ public class DmInit {
     private int pwmControlTargetDutyAddress;
     private int currentErrorCodesAddress;
     private int memorizedErrorCodesAddress;
-    private final int activeFeaturesAddress;
+    private int activeFeaturesAddress;
     private int activeInputsAddress;
     private int afrAddress;
     private int egtAddress;
@@ -91,11 +94,11 @@ public class DmInit {
     private int fuelDiffPressAddress;
     private int backPressAddress;
     private int ethanolContentAddress;
-    private final int afrVoltageAddress;
-    private final int egtVoltageAddress;
-    private final int fuelPressVoltageAddress;
-    private final int backPressVoltageAddress;
-    private final int ethanolContentVoltageAddress;
+    private int afrVoltageAddress;
+    private int egtVoltageAddress;
+    private int fuelPressVoltageAddress;
+    private int backPressVoltageAddress;
+    private int ethanolContentVoltageAddress;
     private int majorVer;
     private int minorVer;
     private int buildNum;
@@ -110,9 +113,11 @@ public class DmInit {
         ByteBuffer buf = ByteBuffer.wrap(dmInitBytes);
         buf.position(0);
         majorVer = buf.get() & 0xFF;
-        //if (majorVer >= 2) {
-            minorVer = buf.get() & 0xFF;
-            buildNum = buf.getShort() & 0xFFFF;
+        minorVer = buf.get() & 0xFF;
+        buildNum = buf.getShort() & 0xFFFF;
+        if (majorVer > 2) {
+            isDmInitReady = false; // unsupported version
+        } else if (majorVer == 2) {
             int ramSize = buf.getInt();
             byte featuresConfig0 = buf.get();
             byte featuresConfig1 = buf.get();
@@ -276,9 +281,14 @@ public class DmInit {
                 if (signature != 0xDEAD000E) {
                     throw new IllegalStateException("DimeMod params reading failure at VALET_MODE");
                 }
-                buf.getInt();
+                valetCurrentCodeAddress = buf.getInt();
             }
-        //}
+            isDmInitReady = true;
+        } else if (majorVer == 1) {
+            isDmInitReady = false; // unsupported version
+        } else {
+            isDmInitReady = false; // unsupported version
+        }
     }
 
     public boolean updateRuntimeData(int activeFeatures, int activeInputs, int currentErrors, int memErrors) {
@@ -286,122 +296,128 @@ public class DmInit {
         if (activeFeatures != this.runtimeActiveFeatures || activeInputs != this.runtimeActiveInputs) {
             changed = true;
         }
-        this.runtimeActiveFeatures = activeFeatures;
-        this.runtimeActiveInputs = activeInputs;
-        this.runtimeCurrentErrors = currentErrors;
-        this.runtimeMemErrors = memErrors;
 
-        boolean isAfrEnabled = (activeInputs & 0x01) != 0;
-        boolean isEgtEnabled = (activeInputs & 0x02) != 0;
-        boolean isFuelPressureEnabled = (activeInputs & 0x04) != 0;
-        boolean isBackPressureEnabled = (activeInputs & 0x08) != 0;
-        boolean isFlexFuelEnabled = (activeInputs & 0x10) != 0;
-        boolean isFfsExternalTriggerEnabled = (activeInputs & 0x20) != 0;
-        boolean isMapSwitchExternalTriggerEnabled = (activeInputs & 0x40) != 0;
-        boolean isFailsafeExternalTriggerEnabled = (activeInputs & 0x80) != 0;
+        if (isDmInitReady) {
+            this.runtimeActiveFeatures = activeFeatures;
+            this.runtimeActiveInputs = activeInputs;
+            this.runtimeCurrentErrors = currentErrors;
+            this.runtimeMemErrors = memErrors;
 
-        boolean isRamTuneEnabled = (runtimeActiveFeatures & 0x80000000) != 0;
-        boolean isCruiseButtonImmediateHacksEnabled = (runtimeActiveFeatures & 0x40000000) != 0;
-        boolean isCorrectionsByGearsEnabled = (runtimeActiveFeatures & 0x20000000) != 0;
-        boolean isCelFlashEnabled = (runtimeActiveFeatures & 0x10000000) != 0;
-        boolean isKnockLightEnabled = (runtimeActiveFeatures & 0x08000000) != 0;
-        boolean isKsByCylsEnabled = (runtimeActiveFeatures & 0x04000000) != 0;
-        boolean isMapSwitchEnabled = (runtimeActiveFeatures & 0x02000000) != 0;
-        boolean isSparkCutEnabled = (runtimeActiveFeatures & 0x01000000) != 0;
-        boolean isSpeedDensityEnabled = (runtimeActiveFeatures & 0x800000) != 0;
-        boolean isAlsEnabled = (runtimeActiveFeatures & 0x400000) != 0;
-        boolean isCanSenderEnabled = (runtimeActiveFeatures & 0x200000) != 0;
-        boolean isVinLockEnabled = (runtimeActiveFeatures & 0x100000) != 0;
-        boolean isPwmControlEnabled = (runtimeActiveFeatures & 0x080000) != 0;
-        boolean isValetModeEnabled = (runtimeActiveFeatures & 0x040000) != 0;
+            boolean isAfrEnabled = (activeInputs & 0x01) != 0;
+            boolean isEgtEnabled = (activeInputs & 0x02) != 0;
+            boolean isFuelPressureEnabled = (activeInputs & 0x04) != 0;
+            boolean isBackPressureEnabled = (activeInputs & 0x08) != 0;
+            boolean isFlexFuelEnabled = (activeInputs & 0x10) != 0;
+            boolean isFfsExternalTriggerEnabled = (activeInputs & 0x20) != 0;
+            boolean isMapSwitchExternalTriggerEnabled = (activeInputs & 0x40) != 0;
+            boolean isFailsafeExternalTriggerEnabled = (activeInputs & 0x80) != 0;
 
-        params.clear();
-        params.add(getUInt8Parameter("DM666", "DimeMod: timer test", "DM666", currentErrorCodesAddress + 12 , "n", "x/16"));
-        params.add(getUInt32Parameter("DM900", "DimeMod: Errors present (current)", "Errors present if not zero", currentErrorCodesAddress, "n", "x!=0"));
-        params.add(getUInt32Parameter("DM901", "DimeMod: Errors present (memorized)", "Errors present if not zero", memorizedErrorCodesAddress, "n", "x!=0"));
+            boolean isRamTuneEnabled = (runtimeActiveFeatures & 0x80000000) != 0;
+            boolean isCruiseButtonImmediateHacksEnabled = (runtimeActiveFeatures & 0x40000000) != 0;
+            boolean isCorrectionsByGearsEnabled = (runtimeActiveFeatures & 0x20000000) != 0;
+            boolean isCelFlashEnabled = (runtimeActiveFeatures & 0x10000000) != 0;
+            boolean isKnockLightEnabled = (runtimeActiveFeatures & 0x08000000) != 0;
+            boolean isKsByCylsEnabled = (runtimeActiveFeatures & 0x04000000) != 0;
+            boolean isMapSwitchEnabled = (runtimeActiveFeatures & 0x02000000) != 0;
+            boolean isSparkCutEnabled = (runtimeActiveFeatures & 0x01000000) != 0;
+            boolean isSpeedDensityEnabled = (runtimeActiveFeatures & 0x800000) != 0;
+            boolean isAlsEnabled = (runtimeActiveFeatures & 0x400000) != 0;
+            boolean isCanSenderEnabled = (runtimeActiveFeatures & 0x200000) != 0;
+            boolean isVinLockEnabled = (runtimeActiveFeatures & 0x100000) != 0;
+            boolean isPwmControlEnabled = (runtimeActiveFeatures & 0x080000) != 0;
+            boolean isValetModeEnabled = (runtimeActiveFeatures & 0x040000) != 0;
 
-        if (isAfrEnabled) {
-            params.add(getFloatParameter("DM902", "DimeMod: AFR", "Air-to-Fuel ratio", afrAddress, "AFR", "x", 8f, 20f, 2f));
-            params.add(getFloatParameter("DM903", "DimeMod: AFR Voltage", "Voltage", afrVoltageAddress, "v", "x", 0f, 5f, 0.5f));
-        }
-        if (isEgtEnabled) {
-            params.add(getFloatTempParameter("DM904", "DimeMod: EGT", "Exhaust Gas Temp", egtAddress));
-            params.add(getFloatParameter("DM905", "DimeMod: EGT Voltage", "Voltage", egtVoltageAddress, "v", "x", 0f, 5f, 0.5f));
-        }
-        if (isFuelPressureEnabled) {
-            params.add(getFloatPressureParameter("DM906", "DimeMod: Fuel Pressure", "Fuel Pressure", fuelPressAddress));
-            params.add(getFloatParameter("DM907", "DimeMod: Fuel Pressure Voltage", "Voltage", fuelPressVoltageAddress, "v", "x", 0f, 5f, 0.5f));
-            params.add(getFloatPressureParameter("DM908", "DimeMod: Fuel Differential Pressure", "Fuel Differential Pressure", fuelDiffPressAddress));
-        }
-        if (isBackPressureEnabled) {
-            params.add(getFloatPressureParameter("DM909", "DimeMod: Backpressure", "BackPressure", backPressAddress));
-            params.add(getFloatParameter("DM910", "DimeMod: Backpressure Voltage", "Voltage", backPressVoltageAddress, "v", "x", 0f, 5f, 0.5f));
-        }
-        if (isFlexFuelEnabled) {
-            params.add(getFloatParameter("DM911", "DimeMod: FlexFuel Ethanol Content", "Ethanol content", ethanolContentAddress, "%", "x", 0f, 100f, 5f));
-            params.add(getFloatParameter("DM912", "DimeMod: FlexFuel Ethanol Content Voltage", "Voltage", ethanolContentVoltageAddress, "v", "x", 0f, 5f, 0.5f));
-        }
-        if (isFailsafeExternalTriggerEnabled) {
-            params.add(getUInt8Parameter("DM913", "DimeMod: MapSwitch Failsafe Mode External Trigger", "Failsafe Trigger State", extFailsafeStateAddress, "state", "x"));
-//            params.add(getUInt8Parameter("DM966", "DimeMod: MapSwitch Failsafe Mode External Trigger Timer", "Failsafe Trigger State", extFailsafeStateAddress + 2, "ticks", "x"));
-            params.add(getFloatParameter("DM914", "DimeMod: MapSwitch Failsafe Mode External Trigger Voltage", "Voltage", extFailsafeVoltageAddress, "v", "x", 0f, 5f, 0.5f));
-        }
-        if (isMapSwitchExternalTriggerEnabled) {
-            params.add(getFloatParameter("DM915", "DimeMod: MapSwitch External Trigger Voltage", "Voltage", extMapSwitchVoltageAddress, "v", "x", 0f, 5f, 0.5f));
-        }
-        if (isFailsafeExternalTriggerEnabled) {
-            params.add(getUInt8Parameter("DM916", "DimeMod: FFS External Trigger", "FFS Trigger State", ffsTriggerStateAddress, "state", "x"));
-            params.add(getFloatParameter("DM917", "DimeMod: FFS External Trigger Voltage", "Voltage", ffsTriggerVoltageAddress, "v", "x", 0f, 5f, 0.5f));
-        }
+            params.clear();
+            params.add(getUInt8Parameter("DM666", "DimeMod: timer test", "DM666", currentErrorCodesAddress + 12, "n", "x/16"));
+            params.add(getUInt32Parameter("DM900", "DimeMod: Errors present (current)", "Errors present if not zero", currentErrorCodesAddress, "n", "x!=0"));
+            params.add(getUInt32Parameter("DM901", "DimeMod: Errors present (memorized)", "Errors present if not zero", memorizedErrorCodesAddress, "n", "x!=0"));
 
-        if (isKsByCylsEnabled) {
-            params.add(
-                    getUInt8Parameter("DM001", "DimeMod: Knock Sum Cylinder 1", "Knock count Cyl 1", knockSumCyl1Address, "n", "x"));
-            params.add(
-                    getUInt8Parameter("DM002", "DimeMod: Knock Sum Cylinder 2", "Knock count Cyl 2", knockSumCyl2Address, "n", "x"));
-            params.add(
-                    getUInt8Parameter("DM003", "DimeMod: Knock Sum Cylinder 3", "Knock count Cyl 3", knockSumCyl3Address, "n", "x"));
-            params.add(
-                    getUInt8Parameter("DM004", "DimeMod: Knock Sum Cylinder 4", "Knock count Cyl 4", knockSumCyl4Address, "n", "x"));
-        }
-        if (isMapSwitchEnabled) {
-            params.add(getUInt8Parameter("DM010", "DimeMod: MapSwitch Selected Set", "Current MapSwitch set num", msCurrentSetNumberAddress, "set", "x+1"));
-            params.add(getUInt8Parameter("DM011", "DimeMod: MapSwitch Failsafe State", "Current MapSwitch failsafe state", msFailsafeStateAddress, "#", "x"));
-            params.add(getUInt8Parameter("DM012", "DimeMod: MapSwitch Failsafe Memorized States", "Memorized MapSwitch failsafe states", msFailsafeMemorizedStateAddress, "#", "x"));
-            if (isFlexFuelEnabled) {
-                params.add(getFloatParameter("DM013", "DimeMod: Flex Fuel blend value (Boost)", "Blend Value (Boost)", flexFuelBoostSetBlendAddress, "set", 0, 4, 0.1f));
-                params.add(getFloatParameter("DM014", "DimeMod: Flex Fuel blend value (Fuel)", "Blend Value (Fuel)", flexFuelFuelingSetBlendAddress, "set", 0, 4, 0.1f));
-                params.add(getFloatParameter("DM015", "DimeMod: Flex Fuel blend value (Ignition)", "Blend Value (Ignition)", flexFuelIgnitionSetBlendAddress, "set", 0, 4, 0.1f));
-                params.add(getFloatParameter("DM016", "DimeMod: Flex Fuel blend value (Other)", "Blend Value (Other)", flexFuelOtherSetBlendAddress, "set", 0, 4, 0.1f));
-            }
-        }
-        params.add(getFloatParameter("DM017", "DimeMod: Injector Flow value", "Injector Flow Value", flexFuelInjFlowValueAddress, "cc/min", "2707090/x", 0, 4, 0.1f));
-        if (buildNum > 1) {
-            if (isFuelPressureEnabled) {
-                params.add(getFloatParameter("DM018", "DimeMod: IPW Diff Pressure Compensation", "IPW compensation in %", diffPressureCompensationAddress, "%", "(x-1)*100", -100, 100, 10f));
-            }
-            params.add(getFloatParameter("DM01A", "DimeMod: Target Stoichiometric AFR", "Target Stoich AFR", targetStoichAddress, "AFR", "x", 8, 18, 1f));
-            params.add(getFloatParameter("DM019", "DimeMod: IPW Stoich Compensation", "IPW compensation in %", stoichCompensationAddress, "%", "(x-1)*100", -100, 100, 10f));
             if (isAfrEnabled) {
-                params.add(getFloatParameter("DM01B", "DimeMod: AFR Stoich Converted", "AFR with stoich compensation applied", convertedAfrAddress, "AFR", "x", 8, 18, 10f));
+                params.add(getFloatParameter("DM902", "DimeMod: AFR", "Air-to-Fuel ratio", afrAddress, "AFR", "x", 8f, 20f, 2f));
+                params.add(getFloatParameter("DM903", "DimeMod: AFR Voltage", "Voltage", afrVoltageAddress, "v", "x", 0f, 5f, 0.5f));
             }
-        }
-        if (isSpeedDensityEnabled) {
-            params.add(getFloatTempParameter("DM020", "DimeMod: SD Port Temp", "Estimated intake port temp", sdPortTempAddress));
-            params.add(getFloatParameter("DM021", "DimeMod: SD IAT Compensation", "VE IAT Compensation", sdIatCompensationAddress, "%", "(x-1)*100", -50, 150, 25));
-            params.add(getFloatParameter("DM022", "DimeMod: SD Tip-In Compensation", "VE Tip-In Compensation", sdTipInCompensationAddress, "%", "(x-1)*100", -50, 200, 25));
-            params.add(getFloatParameter("DM023", "DimeMod: SD Atm. Press. Compensation", "VE Atmospheric Pressure Compensation", sdAtmPressCompensationAddress, "%", "(x-1)*100", 0, 300, 25));
-            params.add(getFloatParameter("DM024", "DimeMod: SD Blending Ratio", "SD Blending Ratio", sdBlendingRatioAddress, "%", "x*100", 0, 100, 10));
-            params.add(getFloatParameter("DM025", "DimeMod: SD VE Base", "Base VE (no compensations applied)", sdBaseVeAddress, "%", "x", 0, 100, 10));
-            params.add(getFloatParameter("DM026", "DimeMod: SD VE Final", "Final VE (all compensations applied)", sdFinalVeAddress, "%", "x", 0, 100, 10));
+            if (isEgtEnabled) {
+                params.add(getFloatTempParameter("DM904", "DimeMod: EGT", "Exhaust Gas Temp", egtAddress));
+                params.add(getFloatParameter("DM905", "DimeMod: EGT Voltage", "Voltage", egtVoltageAddress, "v", "x", 0f, 5f, 0.5f));
+            }
+            if (isFuelPressureEnabled) {
+                params.add(getFloatMfPressureParameter("DM906", "DimeMod: Fuel Pressure", "Fuel Pressure", fuelPressAddress));
+                params.add(getFloatParameter("DM907", "DimeMod: Fuel Pressure Voltage", "Voltage", fuelPressVoltageAddress, "v", "x", 0f, 5f, 0.5f));
+                params.add(getFloatMfPressureParameter("DM908", "DimeMod: Fuel Differential Pressure", "Fuel Differential Pressure", fuelDiffPressAddress));
+            }
+            if (isBackPressureEnabled) {
+                params.add(getFloatMfPressureParameter("DM909", "DimeMod: Backpressure", "BackPressure", backPressAddress));
+                params.add(getFloatParameter("DM910", "DimeMod: Backpressure Voltage", "Voltage", backPressVoltageAddress, "v", "x", 0f, 5f, 0.5f));
+            }
+            if (isFlexFuelEnabled) {
+                params.add(getFloatParameter("DM911", "DimeMod: FlexFuel Ethanol Content", "Ethanol content", ethanolContentAddress, "%", "x", 0f, 100f, 5f));
+                params.add(getFloatParameter("DM912", "DimeMod: FlexFuel Ethanol Content Voltage", "Voltage", ethanolContentVoltageAddress, "v", "x", 0f, 5f, 0.5f));
+            }
+            if (isFailsafeExternalTriggerEnabled) {
+                params.add(getUInt8Parameter("DM913", "DimeMod: MapSwitch Failsafe Mode External Trigger", "Failsafe Trigger State", extFailsafeStateAddress, "state", "x"));
+//            params.add(getUInt8Parameter("DM966", "DimeMod: MapSwitch Failsafe Mode External Trigger Timer", "Failsafe Trigger State", extFailsafeStateAddress + 2, "ticks", "x"));
+                params.add(getFloatParameter("DM914", "DimeMod: MapSwitch Failsafe Mode External Trigger Voltage", "Voltage", extFailsafeVoltageAddress, "v", "x", 0f, 5f, 0.5f));
+            }
+            if (isMapSwitchExternalTriggerEnabled) {
+                params.add(getFloatParameter("DM915", "DimeMod: MapSwitch External Trigger Voltage", "Voltage", extMapSwitchVoltageAddress, "v", "x", 0f, 5f, 0.5f));
+            }
+            if (isFailsafeExternalTriggerEnabled) {
+                params.add(getUInt8Parameter("DM916", "DimeMod: FFS External Trigger", "FFS Trigger State", ffsTriggerStateAddress, "state", "x"));
+                params.add(getFloatParameter("DM917", "DimeMod: FFS External Trigger Voltage", "Voltage", ffsTriggerVoltageAddress, "v", "x", 0f, 5f, 0.5f));
+            }
 
-            params.add(getFloatParameter("DM027", "DimeMod: AlphaN IAT Compensation", "AnphaN IAT Compensation", alphaNIatCompensationAddress, "%", "(x-1)*100", -50, 200, 25));
-            params.add(getFloatParameter("DM028", "DimeMod: AlphaN Atm. Press. Compensation", "VE Atmospheric Pressure Compensation", alphaNAtmPressCompensationAddress, "%", "(x-1)*100", -50, 200, 25));
-            params.add(getFloatParameter("DM029", "DimeMod: AlphaN Mass Airflow Base", "Base AlphaN Mass Airflow (no compensations applied)", alphaNBaseMassAirflowAddress, "g/s", "x", 0, 300, 50));
-            params.add(getFloatParameter("DM02A", "DimeMod: AlphaN Mass Airflow Final", "Final AlphaN Mass Airflow (all compensations applied)", alphaNFinalMassAirflowAddress, "g/s", "x", 0, 300, 50));
-            params.add(getFloatParameter("DM02B", "DimeMod: Mass Airflow (sensor-based))", "Mass Airflow calculated directly from MAF sensor", sensorMassAirflowAddress, "g/s", "x", 0, 500, 50));
-            if (buildNum > 0) {
-                params.add(getFloatMfPressureParameter("DM02C", "DimeMod: SD Atmospheric Pressure", "Atmospheric Pressure used in SD calculations", sdAtmPressAddress));
+            if (isKsByCylsEnabled) {
+                params.add(
+                        getUInt8Parameter("DM001", "DimeMod: Knock Sum Cylinder 1", "Knock count Cyl 1", knockSumCyl1Address, "n", "x"));
+                params.add(
+                        getUInt8Parameter("DM002", "DimeMod: Knock Sum Cylinder 2", "Knock count Cyl 2", knockSumCyl2Address, "n", "x"));
+                params.add(
+                        getUInt8Parameter("DM003", "DimeMod: Knock Sum Cylinder 3", "Knock count Cyl 3", knockSumCyl3Address, "n", "x"));
+                params.add(
+                        getUInt8Parameter("DM004", "DimeMod: Knock Sum Cylinder 4", "Knock count Cyl 4", knockSumCyl4Address, "n", "x"));
+            }
+            if (isMapSwitchEnabled) {
+                params.add(getUInt8Parameter("DM010", "DimeMod: MapSwitch Selected Set", "Current MapSwitch set num", msCurrentSetNumberAddress, "set", "x+1"));
+                params.add(getUInt8Parameter("DM011", "DimeMod: MapSwitch Failsafe State", "Current MapSwitch failsafe state", msFailsafeStateAddress, "#", "x"));
+                params.add(getUInt8Parameter("DM012", "DimeMod: MapSwitch Failsafe Memorized States", "Memorized MapSwitch failsafe states", msFailsafeMemorizedStateAddress, "#", "x"));
+                if (isFlexFuelEnabled) {
+                    params.add(getFloatParameter("DM013", "DimeMod: Flex Fuel blend value (Boost)", "Blend Value (Boost)", flexFuelBoostSetBlendAddress, "set", 0, 4, 0.1f));
+                    params.add(getFloatParameter("DM014", "DimeMod: Flex Fuel blend value (Fuel)", "Blend Value (Fuel)", flexFuelFuelingSetBlendAddress, "set", 0, 4, 0.1f));
+                    params.add(getFloatParameter("DM015", "DimeMod: Flex Fuel blend value (Ignition)", "Blend Value (Ignition)", flexFuelIgnitionSetBlendAddress, "set", 0, 4, 0.1f));
+                    params.add(getFloatParameter("DM016", "DimeMod: Flex Fuel blend value (Other)", "Blend Value (Other)", flexFuelOtherSetBlendAddress, "set", 0, 4, 0.1f));
+                }
+            }
+            params.add(getFloatParameter("DM017", "DimeMod: Injector Flow value", "Injector Flow Value", flexFuelInjFlowValueAddress, "cc/min", "2707090/x", 0, 4, 0.1f));
+            if (buildNum > 1) {
+                if (isFuelPressureEnabled) {
+                    params.add(getFloatParameter("DM018", "DimeMod: IPW Diff Pressure Compensation", "IPW compensation in %", diffPressureCompensationAddress, "%", "(x-1)*100", -100, 100, 10f));
+                }
+                params.add(getFloatParameter("DM01A", "DimeMod: Target Stoichiometric AFR", "Target Stoich AFR", targetStoichAddress, "AFR", "x", 8, 18, 1f));
+                params.add(getFloatParameter("DM019", "DimeMod: IPW Stoich Compensation", "IPW compensation in %", stoichCompensationAddress, "%", "(x-1)*100", -100, 100, 10f));
+                if (isAfrEnabled) {
+                    params.add(getFloatParameter("DM01B", "DimeMod: AFR Stoich Converted", "AFR with stoich compensation applied", convertedAfrAddress, "AFR", "x", 8, 18, 10f));
+                }
+            }
+            if (isSpeedDensityEnabled) {
+                params.add(getFloatTempParameter("DM020", "DimeMod: SD Port Temp", "Estimated intake port temp", sdPortTempAddress));
+                params.add(getFloatParameter("DM021", "DimeMod: SD IAT Compensation", "VE IAT Compensation", sdIatCompensationAddress, "%", "(x-1)*100", -50, 150, 25));
+                params.add(getFloatParameter("DM022", "DimeMod: SD Tip-In Compensation", "VE Tip-In Compensation", sdTipInCompensationAddress, "%", "(x-1)*100", -50, 200, 25));
+                params.add(getFloatParameter("DM023", "DimeMod: SD Atm. Press. Compensation", "VE Atmospheric Pressure Compensation", sdAtmPressCompensationAddress, "%", "(x-1)*100", 0, 300, 25));
+                params.add(getFloatParameter("DM024", "DimeMod: SD Blending Ratio", "SD Blending Ratio", sdBlendingRatioAddress, "%", "x*100", 0, 100, 10));
+                params.add(getFloatParameter("DM025", "DimeMod: SD VE Base", "Base VE (no compensations applied)", sdBaseVeAddress, "%", "x", 0, 100, 10));
+                params.add(getFloatParameter("DM026", "DimeMod: SD VE Final", "Final VE (all compensations applied)", sdFinalVeAddress, "%", "x", 0, 100, 10));
+
+                params.add(getFloatParameter("DM027", "DimeMod: AlphaN IAT Compensation", "AnphaN IAT Compensation", alphaNIatCompensationAddress, "%", "(x-1)*100", -50, 200, 25));
+                params.add(getFloatParameter("DM028", "DimeMod: AlphaN Atm. Press. Compensation", "VE Atmospheric Pressure Compensation", alphaNAtmPressCompensationAddress, "%", "(x-1)*100", -50, 200, 25));
+                params.add(getFloatParameter("DM029", "DimeMod: AlphaN Mass Airflow Base", "Base AlphaN Mass Airflow (no compensations applied)", alphaNBaseMassAirflowAddress, "g/s", "x", 0, 300, 50));
+                params.add(getFloatParameter("DM02A", "DimeMod: AlphaN Mass Airflow Final", "Final AlphaN Mass Airflow (all compensations applied)", alphaNFinalMassAirflowAddress, "g/s", "x", 0, 300, 50));
+                params.add(getFloatParameter("DM02B", "DimeMod: Mass Airflow (sensor-based))", "Mass Airflow calculated directly from MAF sensor", sensorMassAirflowAddress, "g/s", "x", 0, 500, 50));
+                if (buildNum > 0) {
+                    params.add(getFloatMfPressureParameter("DM02C", "DimeMod: SD Atmospheric Pressure", "Atmospheric Pressure used in SD calculations", sdAtmPressAddress));
+                }
+            }
+            if (isValetModeEnabled) {
+                params.add(getUInt16Parameter("DM030", "DimeMod: Valet Mode: Current entered Code", "Curently entered code", valetCurrentCodeAddress, "#", "x"));
             }
         }
         return changed;
@@ -417,6 +433,17 @@ public class DmInit {
                 }
         );
     }
+    private EcuParameterImpl getUInt16Parameter(String id, String name, String description, int address, String units, String conversion) {
+        return new EcuParameterImpl(id, name,
+                description,
+                new EcuAddressImpl("0x" + Integer.toHexString(address & 0xFFFFFF), 2, -1),
+                null, null, null,
+                new EcuDataConvertor[]{
+                        new EcuParameterConvertorImpl(units, conversion, "0", -1, "uint16", Settings.Endian.BIG, new HashMap<>(), new GaugeMinMax(0, 65535, 2000))
+                }
+        );
+    }
+
 
     private EcuParameterImpl getUInt32Parameter(String id, String name, String description, int address, String units, String conversion) {
         return new EcuParameterImpl(id, name,
@@ -448,18 +475,6 @@ public class DmInit {
                 new EcuDataConvertor[]{
                         new EcuParameterConvertorImpl("Degrees C", "x", "0.0", -1, "float", Settings.Endian.BIG, new HashMap<>(), new GaugeMinMax(-40, 120, 5)),
                         new EcuParameterConvertorImpl("Degrees F", "x*1.8+32", "0.0", -1, "float", Settings.Endian.BIG, new HashMap<>(), new GaugeMinMax(-50, 200, 5))
-                }
-        );
-    }
-
-    private EcuParameterImpl getFloatPressureParameter(String id, String name, String description, int address) {
-        return new EcuParameterImpl(id, name,
-                description,
-                new EcuAddressImpl(Integer.toHexString(address & 0xFFFFFF), 4, -1),
-                null, null, null,
-                new EcuDataConvertor[]{
-                        new EcuParameterConvertorImpl("bar", "x", "0.000", -1, "float", Settings.Endian.BIG, new HashMap<>(), new GaugeMinMax(0, 10, 1)),
-                        new EcuParameterConvertorImpl("psi", "x*14.5038", "0.0", -1, "float", Settings.Endian.BIG, new HashMap<>(), new GaugeMinMax(0, 100, 10))
                 }
         );
     }

@@ -132,19 +132,29 @@ public final class ReadCodesResultsPanel extends JPanel {
         final JPanel mainPanel = new JPanel();
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.PAGE_AXIS));
         mainPanel.setOpaque(true);
-        final ReadCodesResultsPanel resultsPane =
-                new ReadCodesResultsPanel(dtcSet);
-        mainPanel.add(resultsPane);
+        ReadCodesResultsPanel resultsPane = null;
+        ReadCodesResultsPanel dmResultsPane = null;
+        if (dtcSet.size() > 0) {
+            resultsPane =
+                    new ReadCodesResultsPanel(dtcSet);
+            mainPanel.add(resultsPane);
+        }
         if ((dmCurrentCodes != null && dmCurrentCodes.size() > 0) || (dmMemCodes != null && dmMemCodes.size() > 0)) {
-            JSeparator sep = new JSeparator(JSeparator.HORIZONTAL);
-            mainPanel.add(sep);
+            if (dtcSet.size() > 0) {
+                JSeparator sep = new JSeparator(JSeparator.HORIZONTAL);
+                mainPanel.add(sep);
+            }
             JLabel dmLabel = new JLabel("DimeMod errors:", SwingConstants.CENTER);
             mainPanel.add(dmLabel);
-            final ReadCodesResultsPanel dmResultsPane =
+            dmResultsPane =
                     new ReadCodesResultsPanel(dmCurrentCodes, dmMemCodes);
             mainPanel.add(dmResultsPane);
         }
-        mainPanel.add(createSaveReultsPanel(dtcSet, resultsPane));
+        if (resultsPane != null) {
+            mainPanel.add(createSaveReultsPanel(dtcSet, resultsPane));
+        } else {
+            mainPanel.add(createSaveReultsPanel(dtcSet, dmResultsPane));
+        }
         frame.setContentPane(mainPanel);
         final Point loggerLocation = logger.getLocation();
         final Point dialogLocation = new Point();
