@@ -126,8 +126,8 @@ public final class ReadCodesManagerImpl implements ReadCodesManager {
                     }
                 }
 
-                final Integer[] dmCodes = {null};
-                final Integer[] dmMemCodes = {null};
+                final int[][] dmCodes = {{}};
+                final int[][] dmMemCodes = {{}};
                 if (logger.getDmInit() != null) {
                     connection.dmInit(new DmInitCallback() {
                         @Override
@@ -148,7 +148,7 @@ public final class ReadCodesManagerImpl implements ReadCodesManager {
                     }, settings.getDestinationTarget());
                 }
 
-                if (dtcSet.isEmpty() && (dmCodes[0] == null || dmCodes[0] == 0) && (dmMemCodes[0] == null || dmMemCodes[0] == 0)) {
+                if (dtcSet.isEmpty() && (dmCodes[0].length == 0 || dmCodes[0][0] == 0) && (dmMemCodes[0].length == 0 || dmMemCodes[0][0] == 0)) {
                     LOGGER.info("Success reading " + target +
                             " DTC codes, none set");
                     return -1;

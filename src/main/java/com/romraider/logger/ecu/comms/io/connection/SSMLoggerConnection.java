@@ -230,37 +230,116 @@ public final class SSMLoggerConnection implements LoggerConnection {
             int cerrAddr = dmInit.getCurrentErrorCodesAddress();
             int merrAddr = dmInit.getMemorizedErrorCodesAddress();
 
-            byte[] request = protocol.getProtocol().constructReadAddressRequest(module, new byte[][]{
-                    getThreeByteAddr(afAddr),
-                    getThreeByteAddr(afAddr + 1),
-                    getThreeByteAddr(afAddr + 2),
-                    getThreeByteAddr(afAddr + 3),
-                    getThreeByteAddr(aiAddr),
-                    getThreeByteAddr(aiAddr + 1),
-                    getThreeByteAddr(cerrAddr),
-                    getThreeByteAddr(cerrAddr + 1),
-                    getThreeByteAddr(cerrAddr + 2),
-                    getThreeByteAddr(cerrAddr + 3),
-                    getThreeByteAddr(merrAddr),
-                    getThreeByteAddr(merrAddr + 1),
-                    getThreeByteAddr(merrAddr + 2),
-                    getThreeByteAddr(merrAddr + 3),
-            });
-            if (LOGGER.isDebugEnabled())
-                LOGGER.debug(module + " Init DM Runtime Params Request  ---> " + asHex(request));
-            byte[] response = manager.send(request);
-            byte[] processedResponse = protocol.preprocessResponse(request, response, new PollingStateImpl());
-            if (LOGGER.isDebugEnabled())
-                LOGGER.debug(module + " Init DM Runtime Params Response <--- " + asHex(processedResponse));
-            byte responseType = processedResponse[4];
-            if (responseType != SSMProtocol.READ_ADDRESS_RESPONSE) {
-                // error
-                return;
+            if (dmInit.getMinorVer() < 1) {
+                byte[] request = protocol.getProtocol().constructReadAddressRequest(module, new byte[][]{
+                        getThreeByteAddr(afAddr),
+                        getThreeByteAddr(afAddr + 1),
+                        getThreeByteAddr(afAddr + 2),
+                        getThreeByteAddr(afAddr + 3),
+                        getThreeByteAddr(aiAddr),
+                        getThreeByteAddr(aiAddr + 1),
+                        getThreeByteAddr(cerrAddr),
+                        getThreeByteAddr(cerrAddr + 1),
+                        getThreeByteAddr(cerrAddr + 2),
+                        getThreeByteAddr(cerrAddr + 3),
+                        getThreeByteAddr(merrAddr),
+                        getThreeByteAddr(merrAddr + 1),
+                        getThreeByteAddr(merrAddr + 2),
+                        getThreeByteAddr(merrAddr + 3),
+                });
+                if (LOGGER.isDebugEnabled())
+                    LOGGER.debug(module + " Init DM Runtime Params Request  ---> " + asHex(request));
+                byte[] response = manager.send(request);
+                byte[] processedResponse = protocol.preprocessResponse(request, response, new PollingStateImpl());
+                if (LOGGER.isDebugEnabled())
+                    LOGGER.debug(module + " Init DM Runtime Params Response <--- " + asHex(processedResponse));
+                byte responseType = processedResponse[4];
+                if (responseType != SSMProtocol.READ_ADDRESS_RESPONSE) {
+                    // error
+                    return;
+                }
+                forceUpdate = dmInit.updateRuntimeData(getIntFromResponse(processedResponse, 5),
+                        getShortFromResponse(processedResponse, 9),
+                        new int[]{getIntFromResponse(processedResponse, 11)},
+                        new int[]{getIntFromResponse(processedResponse, 15)}
+                );
+
+            } else {
+                byte[] request = protocol.getProtocol().constructReadAddressRequest(module, new byte[][]{
+                        getThreeByteAddr(afAddr),
+                        getThreeByteAddr(afAddr + 1),
+                        getThreeByteAddr(afAddr + 2),
+                        getThreeByteAddr(afAddr + 3),
+                        getThreeByteAddr(aiAddr),
+                        getThreeByteAddr(aiAddr + 1),
+                        getThreeByteAddr(cerrAddr),
+                        getThreeByteAddr(cerrAddr + 1),
+                        getThreeByteAddr(cerrAddr + 2),
+                        getThreeByteAddr(cerrAddr + 3),
+                        getThreeByteAddr(cerrAddr + 4),
+                        getThreeByteAddr(cerrAddr + 5),
+                        getThreeByteAddr(cerrAddr + 6),
+                        getThreeByteAddr(cerrAddr + 7),
+                        getThreeByteAddr(cerrAddr + 8),
+                        getThreeByteAddr(cerrAddr + 9),
+                        getThreeByteAddr(cerrAddr + 10),
+                        getThreeByteAddr(cerrAddr + 11),
+                        getThreeByteAddr(cerrAddr + 12),
+                        getThreeByteAddr(cerrAddr + 13),
+                        getThreeByteAddr(cerrAddr + 14),
+                        getThreeByteAddr(cerrAddr + 15),
+                        getThreeByteAddr(merrAddr),
+                        getThreeByteAddr(merrAddr + 1),
+                        getThreeByteAddr(merrAddr + 2),
+                        getThreeByteAddr(merrAddr + 3),
+                        getThreeByteAddr(merrAddr + 4),
+                        getThreeByteAddr(merrAddr + 5),
+                        getThreeByteAddr(merrAddr + 6),
+                        getThreeByteAddr(merrAddr + 7),
+                        getThreeByteAddr(merrAddr + 8),
+                        getThreeByteAddr(merrAddr + 9),
+                        getThreeByteAddr(merrAddr + 10),
+                        getThreeByteAddr(merrAddr + 11),
+                        getThreeByteAddr(merrAddr + 12),
+                        getThreeByteAddr(merrAddr + 13),
+                        getThreeByteAddr(merrAddr + 14),
+                        getThreeByteAddr(merrAddr + 15),
+                });
+                if (LOGGER.isDebugEnabled())
+                    LOGGER.debug(module + " Init DM Runtime Params Request  ---> " + asHex(request));
+                byte[] response = manager.send(request);
+                byte[] processedResponse = protocol.preprocessResponse(request, response, new PollingStateImpl());
+                if (LOGGER.isDebugEnabled())
+                    LOGGER.debug(module + " Init DM Runtime Params Response <--- " + asHex(processedResponse));
+                byte responseType = processedResponse[4];
+                if (responseType != SSMProtocol.READ_ADDRESS_RESPONSE) {
+                    // error
+                    return;
+                }
+                forceUpdate = dmInit.updateRuntimeData(getIntFromResponse(processedResponse, 5),
+                        getShortFromResponse(processedResponse, 9),
+                        new int[]{
+                                getShortFromResponse(processedResponse, 11),
+                                getShortFromResponse(processedResponse, 13),
+                                getShortFromResponse(processedResponse, 15),
+                                getShortFromResponse(processedResponse, 17),
+                                getShortFromResponse(processedResponse, 19),
+                                getShortFromResponse(processedResponse, 21),
+                                getShortFromResponse(processedResponse, 23),
+                                getShortFromResponse(processedResponse, 25)
+                        },
+                        new int[]{
+                                getShortFromResponse(processedResponse, 27),
+                                getShortFromResponse(processedResponse, 29),
+                                getShortFromResponse(processedResponse, 31),
+                                getShortFromResponse(processedResponse, 33),
+                                getShortFromResponse(processedResponse, 35),
+                                getShortFromResponse(processedResponse, 37),
+                                getShortFromResponse(processedResponse, 39),
+                                getShortFromResponse(processedResponse, 41)
+                        }
+                );
             }
-            forceUpdate = dmInit.updateRuntimeData(getIntFromResponse(processedResponse, 5),
-                    getShortFromResponse(processedResponse, 9),
-                    getIntFromResponse(processedResponse, 11),
-                    getIntFromResponse(processedResponse, 15));
         }
         callback.callback(dmInit, forceUpdate);
     }
@@ -269,6 +348,7 @@ public final class SSMLoggerConnection implements LoggerConnection {
         return ((processedResponse[offset] & 0xFF) << 8) +
                 (processedResponse[offset + 1] & 0xFF);
     }
+
     private static int getIntFromResponse(byte[] processedResponse, int offset) {
         return ((processedResponse[offset] & 0xFF) << 24) +
                 ((processedResponse[offset + 1] & 0xFF) << 16) +

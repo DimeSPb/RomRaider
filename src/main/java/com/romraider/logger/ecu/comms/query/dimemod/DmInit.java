@@ -22,6 +22,7 @@ package com.romraider.logger.ecu.comms.query.dimemod;
 import com.romraider.Settings;
 import com.romraider.logger.ecu.definition.*;
 import com.romraider.logger.ecu.ui.handler.dash.GaugeMinMax;
+import com.romraider.util.HexUtil;
 
 import java.nio.ByteBuffer;
 import java.util.*;
@@ -102,8 +103,8 @@ public class DmInit {
     private int majorVer;
     private int minorVer;
     private int buildNum;
-    private int runtimeCurrentErrors;
-    private int runtimeMemErrors;
+    private int[] runtimeCurrentErrors;
+    private int[] runtimeMemErrors;
     private int runtimeActiveFeatures;
     private int runtimeActiveInputs;
     private List<EcuParameter> params = new ArrayList<>();
@@ -208,7 +209,7 @@ public class DmInit {
                 flexFuelIgnitionSetBlendAddress = buf.getInt();
                 flexFuelOtherSetBlendAddress = buf.getInt();
                 flexFuelInjFlowValueAddress = buf.getInt();
-                if (buildNum > 1) {
+                if (minorVer > 0 || buildNum > 1) {
                     diffPressureCompensationAddress = buf.getInt();
                     targetStoichAddress = buf.getInt();
                     stoichCompensationAddress = buf.getInt();
@@ -233,7 +234,7 @@ public class DmInit {
                 alphaNBaseMassAirflowAddress = buf.getInt();
                 alphaNFinalMassAirflowAddress = buf.getInt();
                 sensorMassAirflowAddress = buf.getInt();
-                if (buildNum > 0) {
+                if (minorVer > 0 || buildNum > 0) {
                     sdAtmPressAddress = buf.getInt();
                 }
                 int engineLoadSmoothingAAddress = buf.getInt();
@@ -291,7 +292,7 @@ public class DmInit {
         }
     }
 
-    public boolean updateRuntimeData(int activeFeatures, int activeInputs, int currentErrors, int memErrors) {
+    public boolean updateRuntimeData(int activeFeatures, int activeInputs, int[] currentErrors, int[] memErrors) {
         boolean changed = false;
         if (activeFeatures != this.runtimeActiveFeatures || activeInputs != this.runtimeActiveInputs) {
             changed = true;
@@ -328,7 +329,12 @@ public class DmInit {
             boolean isValetModeEnabled = (runtimeActiveFeatures & 0x040000) != 0;
 
             params.clear();
-            params.add(getUInt8Parameter("DM666", "DimeMod: timer test", "DM666", currentErrorCodesAddress + 12, "n", "x/16"));
+            if (minorVer > 0) {
+                params.add(getUInt8Parameter("DM666", "DimeMod: Fatal Error", "DM666", currentErrorCodesAddress + 16 + 16 + 4, "n", "x"));
+                params.add(getUInt8Parameter("DM667", "DimeMod: timer test", "DM667", currentErrorCodesAddress + 16 + 16 + 4 + 1, "n", "x/16"));
+            } else {
+                params.add(getUInt8Parameter("DM667", "DimeMod: timer test", "DM667", currentErrorCodesAddress + 12, "n", "x/16"));
+            }
             params.add(getUInt32Parameter("DM900", "DimeMod: Errors present (current)", "Errors present if not zero", currentErrorCodesAddress, "n", "x!=0"));
             params.add(getUInt32Parameter("DM901", "DimeMod: Errors present (memorized)", "Errors present if not zero", memorizedErrorCodesAddress, "n", "x!=0"));
 
@@ -388,7 +394,7 @@ public class DmInit {
                 }
             }
             params.add(getFloatParameter("DM017", "DimeMod: Injector Flow value", "Injector Flow Value", flexFuelInjFlowValueAddress, "cc/min", "2707090/x", 0, 4, 0.1f));
-            if (buildNum > 1) {
+            if (minorVer > 0 || buildNum > 1) {
                 if (isFuelPressureEnabled) {
                     params.add(getFloatParameter("DM018", "DimeMod: IPW Diff Pressure Compensation", "IPW compensation in %", diffPressureCompensationAddress, "%", "(x-1)*100", -100, 100, 10f));
                 }
@@ -532,7 +538,7 @@ public class DmInit {
         return activeInputsAddress;
     }
 
-    public int getRuntimeCurrentErrors() {
+    public int[] getRuntimeCurrentErrors() {
         return runtimeCurrentErrors;
     }
 
@@ -540,7 +546,7 @@ public class DmInit {
         return runtimeActiveInputs;
     }
 
-    public int getRuntimeMemErrors() {
+    public int[] getRuntimeMemErrors() {
         return runtimeMemErrors;
     }
 
@@ -549,14 +555,159 @@ public class DmInit {
     }
 
     public Set<String> decodeDmCurrentErrors() {
-        return decodeErrors(runtimeCurrentErrors);
+        if (minorVer == 0) {
+            return decodeErrors20(runtimeCurrentErrors[0]);
+        } else {
+            return decodeErrors21(runtimeCurrentErrors);
+        }
     }
 
     public Set<String> decodeDmMemorizedErrors() {
-        return decodeErrors(runtimeMemErrors);
+        if (minorVer == 0) {
+            return decodeErrors20(runtimeMemErrors[0]);
+        } else {
+            return decodeErrors21(runtimeMemErrors);
+        }
     }
 
-    private Set<String> decodeErrors(int errors) {
+    private Set<String> decodeErrors21(int[] errors) {
+        Set<String> result = new TreeSet<>();
+        for (int i : errors) {
+            if (i == 0) break;
+
+            short err = (short) i;
+            if ((err == (short) 0x800F)) {
+                result.add("DM3000: ECU Link License Error");
+                continue;
+            }
+            if ((err == (short) 0x800E)) {
+                result.add("DM9999: Internal Logic Error");
+                continue;
+            }
+            if ((err == (short) 0x800D)) {
+                result.add("DM0001: Table Metadata Buffer Overflow");
+                continue;
+            }
+            if ((err == (short) 0x800C)) {
+                result.add("DM0002: Table Metadata Wrong Table");
+                continue;
+            }
+
+            // decoding errors
+            String inputStr;
+            String funcStr;
+            String reasonStr;
+            short inputType = (short) (err & 0x0F00);
+            short funcType = (short) (err & 0x00F0);
+            short reason = (short) (err & 0x000F);
+
+            switch (inputType) {
+                case 0x00:
+                    inputStr = "";
+                    break;
+                case 0x100:
+                    inputStr = "TGV Left";
+                    break;
+                case 0x200:
+                    inputStr = "TGV Right";
+                    break;
+                case 0x300:
+                    inputStr = "Rear O2";
+                    break;
+                case 0x400:
+                    inputStr = "MAF Sensor Input";
+                    break;
+                case 0x500:
+                    inputStr = "CAN ADC Channel 01";
+                    break;
+                case 0x600:
+                    inputStr = "CAN ADC Channel 02";
+                    break;
+                case 0x700:
+                    inputStr = "CAN ADC Channel 03";
+                    break;
+                case 0x800:
+                    inputStr = "CAN ADC Channel 04";
+                    break;
+                case 0x900:
+                    inputStr = "CAN ADC Channel 05";
+                    break;
+                case 0xA00:
+                    inputStr = "CAN ADC Channel 06";
+                    break;
+                case 0xB00:
+                    inputStr = "CAN ADC Channel 07";
+                    break;
+                case 0xC00:
+                    inputStr = "CAN ADC Channel 08";
+                    break;
+                default:
+                    inputStr = "Unknown input";
+                    break;
+            }
+
+            switch (funcType) {
+                case 0x00:
+                    funcStr = "";
+                    break;
+                case 0x10:
+                    funcStr = "AFR";
+                    break;
+                case 0x20:
+                    funcStr = "EGT";
+                    break;
+                case 0x30:
+                    funcStr = "Fuel Pressure";
+                    break;
+                case 0x40:
+                    funcStr = "Backpressure";
+                    break;
+                case 0x50:
+                    funcStr = "FlexFuel";
+                    break;
+                case 0x60:
+                    funcStr = "FFS External Trigger";
+                    break;
+                case 0x70:
+                    funcStr = "MapSwitch External Trigger";
+                    break;
+                case 0x80:
+                    funcStr = "Custom Failsafe Trigger";
+                    break;
+                default:
+                    funcStr = "Unknown function";
+                    break;
+            }
+
+            switch (reason) {
+                case 0x00:
+                    reasonStr = "";
+                    break;
+                case 0x01:
+                    reasonStr = "Voltage Too Low";
+                    break;
+                case 0x02:
+                    reasonStr = "Voltage Too High";
+                    break;
+                case 0x03:
+                    reasonStr = "Input is not available";
+                    break;
+                case 0x04:
+                    reasonStr = "Input is already used";
+                    break;
+                case 0x05:
+                    reasonStr = "Input is not assigned";
+                    break;
+                default:
+                    reasonStr = "Unknown problem";
+                    break;
+            }
+            result.add("DM" + HexUtil.intToHexString(err, 4) + " " + funcStr + ", " + reasonStr + (inputStr.isEmpty() ? "" : " (" + inputStr + ")"));
+        }
+        return result;
+    }
+
+    private Set<String> decodeErrors20(int errors) {
         Set<String> result = new TreeSet<>();
         if ((errors & 0x00000001) != 0) {
             result.add("DM0001: Table Metadata Buffer Overflow");
@@ -625,5 +776,17 @@ public class DmInit {
         }
 
         return result;
+    }
+
+    public int getMajorVer() {
+        return majorVer;
+    }
+
+    public int getMinorVer() {
+        return minorVer;
+    }
+
+    public int getBuildNum() {
+        return buildNum;
     }
 }

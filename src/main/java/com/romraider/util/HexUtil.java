@@ -175,4 +175,16 @@ public final class HexUtil {
     public static String intToHexString(int input) {
         return "0x" + Integer.toHexString(input).toUpperCase();
     }
+
+    public static String toHexString(int input) {
+        return Integer.toHexString(input).toUpperCase();
+    }
+
+    public static String intToHexString(int i, int minLength) {
+        StringBuilder s = new StringBuilder(toHexString(i));
+        while (s.length() < minLength) {
+            s.insert(0, "0");
+        }
+        return s.toString();
+    }
 }
