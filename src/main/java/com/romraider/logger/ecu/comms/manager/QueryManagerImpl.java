@@ -262,14 +262,14 @@ public final class QueryManagerImpl implements QueryManager {
             catch (Exception e) {
                 messageListener.reportMessage(MessageFormat.format(
                         rb.getString("INITDMFAIL"), module.getName()));
-                LOGGER.error("Error in DimeMod init: " + e.getMessage());
+                LOGGER.error("Error in DimeMod init: ", e);
             }
 
             rv = true;
         } catch (Exception e) {
             messageListener.reportMessage(MessageFormat.format(
                     rb.getString("INITFAIL"), module.getName()));
-            LOGGER.error("Error sending init: " + e.getMessage());
+            LOGGER.error("Error sending init: ", e);
         }
         finally {
             if (connection != null) connection.close();

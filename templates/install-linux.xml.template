@@ -63,6 +63,10 @@
             <file src="plugins/txs_tuner.plugin" targetdir="$INSTALL_PATH/plugins"/>
             <file src="plugins/txs_utec.plugin" targetdir="$INSTALL_PATH/plugins"/>
             <file src="plugins/zt2.plugin" targetdir="$INSTALL_PATH/plugins"/>
+            <file src="definitions/logger.dtd" targetdir="$INSTALL_PATH"/>
+            <file src="definitions/profile.dtd" targetdir="$INSTALL_PATH"/>
+            <file src="definitions/ecu_defs.dtd" targetdir="$INSTALL_PATH"/>
+            <file src="definitions/cars_def.dtd" targetdir="$INSTALL_PATH"/>            <file src="plugins/zt2.plugin" targetdir="$INSTALL_PATH/plugins"/>
             <fileset dir="customize" targetdir="$INSTALL_PATH/customize"/>
             <fileset dir="i18n" targetdir="$INSTALL_PATH/i18n"/>
 

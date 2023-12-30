@@ -57,7 +57,7 @@ public interface LoggerConnection {
      * @param callback     - callback which will identify the Module
      * @param module       - the Module to identify
      */
-    void dmInit(DmInitCallback callback, Module module);
+    void dmInit(DmInitCallback callback, Module module) throws InterruptedException;
 
     /**
      * Use this method to query the Module for the parameters included as queries. 
