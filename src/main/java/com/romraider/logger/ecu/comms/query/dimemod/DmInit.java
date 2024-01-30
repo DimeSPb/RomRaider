@@ -31,8 +31,10 @@ public class DmInit {
     private final byte[] dmInitBytes;
 
     private final boolean isDmInitReady;
+    private int failsafeReqTrqLimitAddress;
+    private int failsafeStageAddress;
+    private boolean isFailsafeEnabled;
     private boolean isRamTuneEnabled;
-    private boolean isCruiseButtonImmediateHacksEnabled;
     private boolean isCorrectionsByGearsEnabled;
     private boolean isCelFlashEnabled;
     private boolean isKnockLightEnabled;
@@ -54,8 +56,8 @@ public class DmInit {
     private int stoichCompensationAddress;
     private int convertedAfrAddress;
     private int sdAtmPressAddress;
-    private int msFailsafeStateAddress;
-    private int msFailsafeMemorizedStateAddress;
+    private int failsafeStateAddress;
+    private int failsafeMemorizedStateAddress;
     private int ramTuneSignatureAddress;
     private int ramTuneLutSize;
     private int celOverrideStateAddress;
@@ -94,11 +96,15 @@ public class DmInit {
     private int fuelPressAddress;
     private int fuelDiffPressAddress;
     private int backPressAddress;
+    private int oilTempAddress;
+    private int oilPressAddress;
     private int ethanolContentAddress;
     private int afrVoltageAddress;
     private int egtVoltageAddress;
     private int fuelPressVoltageAddress;
     private int backPressVoltageAddress;
+    private int oilTempVoltageAddress;
+    private int oilPressVoltageAddress;
     private int ethanolContentVoltageAddress;
     private int majorVer;
     private int minorVer;
@@ -126,7 +132,7 @@ public class DmInit {
             byte featuresConfig3 = buf.get();
 
             isRamTuneEnabled = (featuresConfig0 & 0x80) != 0;
-            isCruiseButtonImmediateHacksEnabled = (featuresConfig0 & 0x40) != 0;
+            isFailsafeEnabled = (featuresConfig0 & 0x40) != 0;
             isCorrectionsByGearsEnabled = (featuresConfig0 & 0x20) != 0;
             isCelFlashEnabled = (featuresConfig0 & 0x10) != 0;
             isKnockLightEnabled = (featuresConfig0 & 0x08) != 0;
@@ -154,6 +160,10 @@ public class DmInit {
             fuelPressAddress = buf.getInt();
             fuelDiffPressAddress = buf.getInt();
             backPressAddress = buf.getInt();
+            if (minorVer >= 3) {
+                oilTempAddress = buf.getInt();
+                oilPressAddress = buf.getInt();
+            }
             ethanolContentAddress = buf.getInt();
             ffsTriggerStateAddress = buf.getInt();
             extFailsafeStateAddress = buf.getInt();
@@ -162,6 +172,10 @@ public class DmInit {
             egtVoltageAddress = buf.getInt();
             fuelPressVoltageAddress = buf.getInt();
             backPressVoltageAddress = buf.getInt();
+            if (minorVer >= 3) {
+                oilTempVoltageAddress = buf.getInt();
+                oilPressVoltageAddress = buf.getInt();
+            }
             ethanolContentVoltageAddress = buf.getInt();
             ffsTriggerVoltageAddress = buf.getInt();
             extFailsafeVoltageAddress = buf.getInt();
@@ -174,6 +188,17 @@ public class DmInit {
                 }
                 ramTuneSignatureAddress = buf.getInt();
                 ramTuneLutSize = buf.getInt();
+            }
+
+            if (isFailsafeEnabled) {
+                signature = buf.getInt();
+                if (signature != 0xDEAD0002) {
+                    throw new IllegalStateException("DimeMod params reading failure at FAILSAFE");
+                }
+                failsafeStateAddress = buf.getInt();
+                failsafeMemorizedStateAddress = buf.getInt();
+                failsafeStageAddress = buf.getInt();
+                failsafeReqTrqLimitAddress = buf.getInt();
             }
 
             if (isCelFlashEnabled) {
@@ -202,8 +227,10 @@ public class DmInit {
                 }
                 msNumberOfSets = buf.getInt();
                 msCurrentSetNumberAddress = buf.getInt();
-                msFailsafeStateAddress = buf.getInt();
-                msFailsafeMemorizedStateAddress = buf.getInt();
+                if (majorVer == 2 && minorVer < 3) {
+                    failsafeStateAddress = buf.getInt();
+                    failsafeMemorizedStateAddress = buf.getInt();
+                }
                 flexFuelBoostSetBlendAddress = buf.getInt();
                 flexFuelFuelingSetBlendAddress = buf.getInt();
                 flexFuelIgnitionSetBlendAddress = buf.getInt();
@@ -312,6 +339,8 @@ public class DmInit {
             boolean isFfsExternalTriggerEnabled = (activeInputs & 0x20) != 0;
             boolean isMapSwitchExternalTriggerEnabled = (activeInputs & 0x40) != 0;
             boolean isFailsafeExternalTriggerEnabled = (activeInputs & 0x80) != 0;
+            boolean isOilTempEnabled = (activeInputs & 0x100) != 0;
+            boolean isOilPressEnabled = (activeInputs & 0x200) != 0;
 
             boolean isRamTuneEnabled = (runtimeActiveFeatures & 0x80000000) != 0;
             boolean isCruiseButtonImmediateHacksEnabled = (runtimeActiveFeatures & 0x40000000) != 0;
@@ -355,6 +384,14 @@ public class DmInit {
                 params.add(getFloatMfPressureParameter("DM909", "DimeMod: Backpressure", "BackPressure", backPressAddress));
                 params.add(getFloatParameter("DM910", "DimeMod: Backpressure Voltage", "Voltage", backPressVoltageAddress, "v", "x", 0f, 5f, 0.5f));
             }
+            if (isOilTempEnabled) {
+                params.add(getFloatTempParameter("DM920", "DimeMod: Oil Temp", "Oil Temperature", oilTempAddress));
+                params.add(getFloatParameter("DM921", "DimeMod: Oil Temp Voltage", "Voltage", oilTempVoltageAddress, "v", "x", 0f, 5f, 0.5f));
+            }
+            if (isOilPressEnabled) {
+                params.add(getFloatMfPressureParameter("DM922", "DimeMod: Oil Press", "Oil Pressure", oilPressAddress));
+                params.add(getFloatParameter("DM923", "DimeMod: Oil Press Voltage", "Voltage", oilPressVoltageAddress, "v", "x", 0f, 5f, 0.5f));
+            }
             if (isFlexFuelEnabled) {
                 params.add(getFloatParameter("DM911", "DimeMod: FlexFuel Ethanol Content", "Ethanol content", ethanolContentAddress, "%", "x", 0f, 100f, 5f));
                 params.add(getFloatParameter("DM912", "DimeMod: FlexFuel Ethanol Content Voltage", "Voltage", ethanolContentVoltageAddress, "v", "x", 0f, 5f, 0.5f));
@@ -382,10 +419,18 @@ public class DmInit {
                 params.add(
                         getUInt8Parameter("DM004", "DimeMod: Knock Sum Cylinder 4", "Knock count Cyl 4", knockSumCyl4Address, "n", "x"));
             }
+            if (isFailsafeEnabled) {
+                params.add(getUInt8Parameter("DM201", "DimeMod: Failsafe State", "Current MapSwitch failsafe state", failsafeStateAddress, "#", "x"));
+                params.add(getUInt8Parameter("DM202", "DimeMod: Failsafe Memorized States", "Memorized MapSwitch failsafe states", failsafeMemorizedStateAddress, "#", "x"));
+                params.add(getUInt8Parameter("DM203", "DimeMod: Failsafe Current Stage", "", failsafeStageAddress, "#", "x"));
+                params.add(getFloatParameter("DM204", "DimeMod: Failsafe Requested Torque Limit", "", failsafeReqTrqLimitAddress, "Nm", "x", 0, 700, 10));
+            }
             if (isMapSwitchEnabled) {
                 params.add(getUInt8Parameter("DM010", "DimeMod: MapSwitch Selected Set", "Current MapSwitch set num", msCurrentSetNumberAddress, "set", "x+1"));
-                params.add(getUInt8Parameter("DM011", "DimeMod: MapSwitch Failsafe State", "Current MapSwitch failsafe state", msFailsafeStateAddress, "#", "x"));
-                params.add(getUInt8Parameter("DM012", "DimeMod: MapSwitch Failsafe Memorized States", "Memorized MapSwitch failsafe states", msFailsafeMemorizedStateAddress, "#", "x"));
+                if (majorVer == 2 && minorVer < 3) {
+                    params.add(getUInt8Parameter("DM011", "DimeMod: Failsafe State", "Current MapSwitch failsafe state", failsafeStateAddress, "#", "x"));
+                    params.add(getUInt8Parameter("DM012", "DimeMod: Failsafe Memorized States", "Memorized MapSwitch failsafe states", failsafeMemorizedStateAddress, "#", "x"));
+                }
                 if (isFlexFuelEnabled) {
                     params.add(getFloatParameter("DM013", "DimeMod: Flex Fuel blend value (Boost)", "Blend Value (Boost)", flexFuelBoostSetBlendAddress, "set", 0, 4, 0.1f));
                     params.add(getFloatParameter("DM014", "DimeMod: Flex Fuel blend value (Fuel)", "Blend Value (Fuel)", flexFuelFuelingSetBlendAddress, "set", 0, 4, 0.1f));
@@ -674,6 +719,12 @@ public class DmInit {
                 case 0x80:
                     funcStr = "Custom Failsafe Trigger";
                     break;
+                case 0x90:
+                    funcStr = "Oil Temp";
+                    break;
+                case 0xA0:
+                    funcStr = "Oil Press";
+                    break;
                 default:
                     funcStr = "Unknown function";
                     break;
@@ -758,6 +809,9 @@ public class DmInit {
         }
         if ((errors & 0x00400000) != 0) {
             result.add("DM0036: MapSwitch External Trigger Related Problem");
+        }
+        if ((errors & 0x00800000) != 0) {
+            result.add("DM0037: Failsafe External Trigger Related Problem");
         }
         if ((errors & 0x00800000) != 0) {
             result.add("DM0037: Failsafe External Trigger Related Problem");
