@@ -87,6 +87,12 @@ public class DmInit {
     private int alphaNFinalMassAirflowAddress;
     private int sensorMassAirflowAddress;
     private int pwmControlTargetDutyAddress;
+    private int alsCounterCombustionCycles;
+    private int alsCounterFuelCutCycles;
+    private int alsCounterSparkCutCycles;
+    private int alsCutMode;
+    private int alsCutLevel;
+    private int alsCutValue;
     private int currentErrorCodesAddress;
     private int memorizedErrorCodesAddress;
     private int activeFeaturesAddress;
@@ -301,7 +307,16 @@ public class DmInit {
                 if (signature != 0xDEAD000A) {
                     throw new IllegalStateException("DimeMod params reading failure at ALS");
                 }
-                buf.getInt();
+                if (minorVer > 3 || ((minorVer == 3) && (buildNum > 0))) {
+                    alsCounterCombustionCycles = buf.getInt();
+                    alsCounterFuelCutCycles = buf.getInt();
+                    alsCounterSparkCutCycles = buf.getInt();
+                    alsCutMode = buf.getInt();
+                    alsCutLevel = buf.getInt();
+                    alsCutValue = buf.getInt();
+                } else {
+                    buf.getInt();
+                }
             }
 
             if (isValetModeEnabled) {
@@ -360,9 +375,9 @@ public class DmInit {
             params.clear();
             if (minorVer > 0) {
                 params.add(getUInt8Parameter("DM666", "DimeMod: Fatal Error", "DM666", currentErrorCodesAddress + 16 + 16 + 4, "n", "x"));
-                params.add(getUInt8Parameter("DM667", "DimeMod: timer test", "DM667", currentErrorCodesAddress + 16 + 16 + 4 + 1, "n", "x/16"));
+                params.add(getUInt8Parameter("DM667", "DimeMod: Timer: Main Loop (debug)", "DM667", currentErrorCodesAddress + 16 + 16 + 4 + 1, "n", "x/16"));
             } else {
-                params.add(getUInt8Parameter("DM667", "DimeMod: timer test", "DM667", currentErrorCodesAddress + 12, "n", "x/16"));
+                params.add(getUInt8Parameter("DM667", "DimeMod: Timer: Main Loop (debug)", "DM667", currentErrorCodesAddress + 12, "n", "x/16"));
             }
             params.add(getUInt32Parameter("DM900", "DimeMod: Errors present (current)", "Errors present if not zero", currentErrorCodesAddress, "n", "x!=0"));
             params.add(getUInt32Parameter("DM901", "DimeMod: Errors present (memorized)", "Errors present if not zero", memorizedErrorCodesAddress, "n", "x!=0"));
@@ -465,6 +480,16 @@ public class DmInit {
                 params.add(getFloatParameter("DM02B", "DimeMod: Mass Airflow (sensor-based))", "Mass Airflow calculated directly from MAF sensor", sensorMassAirflowAddress, "g/s", "x", 0, 500, 50));
                 if (buildNum > 0) {
                     params.add(getFloatMfPressureParameter("DM02C", "DimeMod: SD Atmospheric Pressure", "Atmospheric Pressure used in SD calculations", sdAtmPressAddress));
+                }
+            }
+            if (minorVer > 3 || (minorVer == 3 && buildNum > 0)) {
+                if (isAlsEnabled) {
+                    params.add(getUInt8Parameter("DMA00", "DimeMod: ALS: Counter of total combustion cycles", "", alsCounterCombustionCycles, "#", "x"));
+                    params.add(getUInt8Parameter("DMA01", "DimeMod: ALS: Counter of Fuel Cut cycles", "", alsCounterFuelCutCycles, "#", "x"));
+                    params.add(getUInt8Parameter("DMA02", "DimeMod: ALS: Counter of Spark Cut cycles", "", alsCounterSparkCutCycles, "#", "x"));
+                    params.add(getUInt8Parameter("DMA03", "DimeMod: ALS: Cut Mode", "", alsCutMode, "#", "x"));
+                    params.add(getUInt8Parameter("DMA04", "DimeMod: ALS: Cut Level", "", alsCutLevel, "#", "x"));
+                    params.add(getUInt8Parameter("DMA05", "DimeMod: ALS: Cut Randomizer Value", "", alsCutValue, "#", "x"));
                 }
             }
             if (isValetModeEnabled) {
