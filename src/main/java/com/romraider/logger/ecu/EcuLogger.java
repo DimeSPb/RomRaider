@@ -155,6 +155,7 @@ import com.romraider.logger.ecu.profile.UserProfileLoaderImpl;
 import com.romraider.logger.ecu.ui.handler.DataUpdateHandlerManager;
 import com.romraider.logger.ecu.ui.handler.DataUpdateHandlerManagerImpl;
 import com.romraider.logger.ecu.ui.handler.dash.DashboardUpdateHandler;
+import com.romraider.logger.ecu.ui.handler.dataflow.DataflowSimulationHandler;
 import com.romraider.logger.ecu.ui.handler.dyno.DynoUpdateHandler;
 import com.romraider.logger.ecu.ui.handler.file.FileLoggerControllerSwitchHandler;
 import com.romraider.logger.ecu.ui.handler.file.FileLoggerControllerSwitchMonitorImpl;
@@ -474,7 +475,7 @@ public final class EcuLogger extends AbstractFrame implements EcuRelatedMessageL
         dynoUpdateHandler = new DynoUpdateHandler();
         controller = new LoggerControllerImpl(ecuInitCallback, dmInitCallback,this, liveDataUpdateHandler,
                 graphUpdateHandler, dashboardUpdateHandler, mafUpdateHandler, injectorUpdateHandler,
-                dynoUpdateHandler, fileUpdateHandler, TableUpdateHandler.getInstance());
+                dynoUpdateHandler, fileUpdateHandler, TableUpdateHandler.getInstance(), DataflowSimulationHandler.getInstance());
 
         mafHandlerManager = new DataUpdateHandlerManagerImpl();
         mafTabBroker = new DataRegistrationBrokerImpl(controller, mafHandlerManager);

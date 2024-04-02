@@ -442,23 +442,11 @@ public abstract class Table implements Serializable, Comparable<Table> {
     }
 
     public double getMaxReal() {
-        double minReal = JEPUtil.evaluate(getCurrentScale().getExpression(), getMinBin());
-        double maxReal = JEPUtil.evaluate(getCurrentScale().getExpression(), getMaxBin());
-        if(minReal > maxReal) {
-            return minReal;
-        } else {
-            return maxReal;
-        }
+    	return JEPUtil.evaluate(getCurrentScale().getExpression(), getMaxBin());
     }
 
     public double getMinReal() {
-        double minReal = JEPUtil.evaluate(getCurrentScale().getExpression(), getMinBin());
-        double maxReal = JEPUtil.evaluate(getCurrentScale().getExpression(), getMaxBin());
-        if(minReal < maxReal) {
-            return minReal;
-        } else {
-            return maxReal;
-        }
+    	return JEPUtil.evaluate(getCurrentScale().getExpression(), getMinBin());
     }
 
     public void setMaxBin(double maxBin) {
@@ -497,14 +485,28 @@ public abstract class Table implements Serializable, Comparable<Table> {
         }
     }
 
+    //Don't check for duplicate names, just add
     public void setPresetValues(String name, String value) {
     	if(presetManager == null) presetManager = new PresetManager(this);
     	presetManager.setPresetValues(name, value, 0, false);
     }
 
+    //Don't check for duplicate names, just add
     public void setPresetValues(String name, String value, int dataCellOffset) {
     	if(presetManager == null) presetManager = new PresetManager(this);
     	presetManager.setPresetValues(name, value, dataCellOffset, true);
+    }
+
+    //Check for duplicate names, then replace if exist or add otherwise
+    public void addPresetValue(String name, String value) {
+    	if(presetManager == null) presetManager = new PresetManager(this);
+    	presetManager.addPresetValue(name, value, 0, false);
+    }
+
+    //Check for duplicate names, then replace if exist or add otherwise
+    public void addPresetValue(String name, String value, int dataCellOffset) {
+    	if(presetManager == null) presetManager = new PresetManager(this);
+    	presetManager.addPresetValue(name, value, dataCellOffset, true);
     }
 
     public boolean isBeforeRam() {
@@ -603,6 +605,10 @@ public abstract class Table implements Serializable, Comparable<Table> {
         }
     }
 
+    public double linearInterpolation(double x, double x1, double x2, double y1, double y2) {
+        return (x1 == x2) ? y1 : (y1 + (x - x1) * (y2 - y1) / (x2 - x1));
+    }
+    
     public void verticalInterpolate() throws UserLevelException{
         horizontalInterpolate();
     }
@@ -630,13 +636,11 @@ public abstract class Table implements Serializable, Comparable<Table> {
             }
         }
     }
+    
+    public abstract double queryTable(Double input_x, Double input_y);
 
     public void interpolate() throws UserLevelException {
         horizontalInterpolate();
-    }
-
-    public double linearInterpolation(double x, double x1, double x2, double y1, double y2) {
-        return (x1 == x2) ? 0.0 : (y1 + (x - x1) * (y2 - y1) / (x2 - x1));
     }
 
     public void increment(double increment) throws UserLevelException {
@@ -664,7 +668,8 @@ public abstract class Table implements Serializable, Comparable<Table> {
     }
 
     public abstract boolean isLiveDataSupported();
-
+   
+    
     public int getUserLevel() {
         return userLevel;
     }

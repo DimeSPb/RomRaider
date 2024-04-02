@@ -36,7 +36,6 @@ import javax.swing.border.Border;
 import com.romraider.Settings;
 import com.romraider.editor.ecu.ECUEditorManager;
 import com.romraider.util.JEPUtil;
-import com.romraider.util.NumberUtil;
 import com.romraider.util.SettingsManager;
 
 public class DataCellView extends JLabel implements MouseListener, Serializable {
@@ -111,15 +110,15 @@ public class DataCellView extends JLabel implements MouseListener, Serializable 
         }
 
         tableView.updatePresetPanel();
-        this.invalidate();
+        //this.invalidate();
         setFont(getSettings().getTableFont());
         setText(getCellText());
         setToolTipText(getCellToolTip());
         setBackground(getCellBackgroundColor());
         setForeground(getCellTextColor());
         setBorder(getCellBorder());
-        this.validate();   
-        super.repaint();
+        //this.validate();   
+        //super.repaint();
     }
 
     private Color getCellBackgroundColor() {

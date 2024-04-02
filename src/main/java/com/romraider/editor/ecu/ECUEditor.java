@@ -285,7 +285,7 @@ public class ECUEditor extends AbstractFrame {
             if (userSelection == JFileChooser.APPROVE_OPTION) {
                 File fileToSave = fileChooser.getSelectedFile();
 
-                if(!fileToSave.getName().endsWith(".xml") ||!fileToSave.getName().endsWith(".XML"))
+                if(!fileToSave.getName().toLowerCase().endsWith(".xml"))
                         fileToSave = new File(fileToSave.getAbsoluteFile() + ".xml");
 
                 String s = ConversionLayer.convertDocumentToString(r.getDocument());
@@ -410,25 +410,31 @@ public class ECUEditor extends AbstractFrame {
         }
     }
     
+    public static TableView getTableViewForTable(Table t)
+    {
+    	TableView v = null;
+	
+        if(t instanceof TableSwitch)
+            v = new TableSwitchView((TableSwitch)t);
+        else if(t instanceof TableBitwiseSwitch)
+            v = new TableBitwiseSwitchView((TableBitwiseSwitch)t);
+        else if(t instanceof Table1D)
+            v = new Table1DView((Table1D)t, Table1DType.NO_AXIS);
+        else if(t instanceof Table2D)
+            v = new Table2DView((Table2D)t);
+        else if(t instanceof Table3D)
+            v = new Table3DView((Table3D)t);
+        
+        return v;
+    }
+    
     private void openClosedTable(TableTreeNode node)
     {
         Table t = node.getTable();
-        TableView v = null;
+        TableView v = getTableViewForTable(t);
+        t.setTableView(v);
         try {
-            if (t != null) {
-                if(t instanceof TableSwitch)
-                    v = new TableSwitchView((TableSwitch)t);
-                else if(t instanceof TableBitwiseSwitch)
-                    v = new TableBitwiseSwitchView((TableBitwiseSwitch)t);
-                else if(t instanceof Table1D)
-                    v = new Table1DView((Table1D)node.getTable(), Table1DType.NO_AXIS);
-                else if(t instanceof Table2D)
-                    v = new Table2DView((Table2D)t);
-                else if(t instanceof Table3D)
-                    v = new Table3DView((Table3D)t);
-                else
-                    return;
-                
+            if (t != null) {    
     	        v.populateTableVisual();
             	v.drawTable();
             	
