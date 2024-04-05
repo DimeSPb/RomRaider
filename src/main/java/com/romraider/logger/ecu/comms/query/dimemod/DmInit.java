@@ -55,6 +55,8 @@ public class DmInit {
     private int targetStoichAddress;
     private int stoichCompensationAddress;
     private int convertedAfrAddress;
+    private int tipInMultiplierAddress;
+    private int crankingMultiplierAddress;
     private int sdAtmPressAddress;
     private int failsafeStateAddress;
     private int failsafeMemorizedStateAddress;
@@ -247,6 +249,12 @@ public class DmInit {
                     targetStoichAddress = buf.getInt();
                     stoichCompensationAddress = buf.getInt();
                     convertedAfrAddress = buf.getInt();
+                    if ((minorVer == 1 && buildNum >= 300) ||
+                            (minorVer == 3 && buildNum >= 100) ||
+                            (minorVer > 3)) {
+                        tipInMultiplierAddress = buf.getInt();
+                        crankingMultiplierAddress = buf.getInt();
+                    }
                 }
             }
 
@@ -462,6 +470,12 @@ public class DmInit {
                 params.add(getFloatParameter("DM019", "DimeMod: IPW Stoich Compensation", "IPW compensation in %", stoichCompensationAddress, "%", "(x-1)*100", -100, 100, 10f));
                 if (isAfrEnabled) {
                     params.add(getFloatParameter("DM01B", "DimeMod: AFR Stoich Converted", "AFR with stoich compensation applied", convertedAfrAddress, "AFR", "x", 8, 18, 10f));
+                }
+                if ((minorVer == 1 && buildNum >= 300) ||
+                        (minorVer == 3 && buildNum >= 100) ||
+                        (minorVer > 3)) {
+                    params.add(getFloatParameter("DM01C", "DimeMod: Tip-In IPW Total Multiplier", "", tipInMultiplierAddress, "n", "x", 0, 5, 0.5f));
+                    params.add(getFloatParameter("DM01D", "DimeMod: Cranking IPW Total Multiplier", "", crankingMultiplierAddress, "n", "x", 0, 5, 0.5f));
                 }
             }
             if (isSpeedDensityEnabled) {
